@@ -225,6 +225,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
 <script>
 /* =====================================================================
    KONFIGURASI FIREBASE — ISI DENGAN NILAI DARI FIREBASE CONSOLE ANDA
@@ -234,6 +235,20 @@
    3) Buka ⚙️ Project Settings > General > scroll ke "Your apps" >
       klik ikon "</>" (Web) untuk daftarkan web app > salin objek firebaseConfig
    4) Tempel nilainya menggantikan placeholder di bawah ini
+   5) Gambar diupload ke Firebase Storage (bukan disimpan sebagai base64 di
+      Firestore lagi). Pastikan juga sudah buka Build > Storage > Get started
+      di Firebase Console, lalu atur Storage Rules (menu Rules di halaman
+      Storage) — untuk mode belajar/testing pakai:
+        rules_version = '2';
+        service firebase.storage {
+          match /b/{bucket}/o {
+            match /{allPaths=**} {
+              allow read, write: if true;
+            }
+          }
+        }
+      (Rules di atas terbuka untuk siapa saja — cukup aman untuk dipakai
+      internal/testing, tapi sebaiknya diperketat lagi kalau app sudah publik.)
    ===================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyDZlsRdjfsrI2JMRAPYdEu94NVye4LeENE",
@@ -247,9 +262,28 @@ const firebaseConfig = {
 
 const CONFIG_READY = !firebaseConfig.apiKey.startsWith('ISI_');
 let db = null;
+let storage = null;
 if(CONFIG_READY){
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+  storage = firebase.storage();
+}
+
+/* ===================== UPLOAD GAMBAR KE FIREBASE STORAGE ===================== */
+// Gambar TIDAK lagi disimpan sebagai base64 di dalam dokumen Firestore (gampang
+// kelebihan limit 1MB per field/dokumen). Sebagai gantinya file asli diupload ke
+// Firebase Storage, lalu yang disimpan di Firestore hanya URL-nya (string pendek).
+async function uploadFilesToStorage(files, folder){
+  if(!storage) throw new Error('Firebase Storage belum terkonfigurasi.');
+  const urls = [];
+  for(const f of files){
+    const safeName = f.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
+    const ref = storage.ref(path);
+    await ref.put(f);
+    urls.push(await ref.getDownloadURL());
+  }
+  return urls;
 }
 
 /* ===================== DATA LAYER (Firebase Firestore = realtime lintas device) ===================== */
@@ -606,10 +640,12 @@ function projectCard(p){
 /* ===================== MODAL: NEW PROJECT (ADMIN) ===================== */
 let tempUkuran = [{ukuran:'S', qty:1},{ukuran:'M', qty:1}];
 let tempRefImgs = [];
+let tempRefUploadId = '';
 
 function openNewProjectModal(){
   tempUkuran = [{ukuran:'S', qty:1},{ukuran:'M', qty:1}];
   tempRefImgs = [];
+  tempRefUploadId = genId();
   const desainerDl = distinctNames('namaDesainer').map(n=>`<option value="${escapeHtml(n)}">`).join('');
   const produksiDl = distinctNames('namaProduksi').map(n=>`<option value="${escapeHtml(n)}">`).join('');
 
@@ -691,9 +727,21 @@ function removeUkuranRow(i){ tempUkuran.splice(i,1); renderUkuranRows(); }
 
 async function handleRefUpload(e){
   const files = Array.from(e.target.files);
-  for(const f of files){ tempRefImgs.push(await fileToDataUrl(f)); }
+  if(!files.length) return;
+  const input = e.target;
+  input.disabled = true;
+  const strip = document.getElementById('refPreview');
+  strip.innerHTML += `<div class="ip upload-note mono" style="font-size:11px;color:var(--ink-soft);">Mengupload…</div>`;
+  try{
+    const urls = await uploadFilesToStorage(files, `referensi/${tempRefUploadId}`);
+    tempRefImgs.push(...urls);
+  }catch(err){
+    console.error('Gagal upload gambar', err);
+    alert('Gagal upload gambar: ' + err.message);
+  }
+  input.disabled = false;
   renderRefPreview();
-  e.target.value = '';
+  input.value = '';
 }
 function renderRefPreview(){
   document.getElementById('refPreview').innerHTML = tempRefImgs.map((src,i)=>`
@@ -782,7 +830,7 @@ function openDetailModal(id){
         <label>Deadline</label>
         <input type="date" id="f_deadline" value="${p.deadline||''}">
         <label>Upload Gambar Pedoman (opsional)</label>
-        <input type="file" id="f_pedomanimg" accept="image/*" multiple onchange="handlePedomanUpload(event)">
+        <input type="file" id="f_pedomanimg" accept="image/*" multiple onchange="handlePedomanUpload(event, '${p.id}')">
         <div class="img-preview-strip" id="pedomanPreview"></div>
         <div class="modal-actions">
           <button class="btn ghost" onclick="saveDesainerDraft('${p.id}')">Simpan Draft</button>
@@ -839,11 +887,23 @@ function sameName(field){
   return (field||'').trim().toLowerCase() === (state.myName||'').trim().toLowerCase();
 }
 
-async function handlePedomanUpload(e){
+async function handlePedomanUpload(e, projectId){
   const files = Array.from(e.target.files);
-  for(const f of files){ tempPedomanImgs.push(await fileToDataUrl(f)); }
+  if(!files.length) return;
+  const input = e.target;
+  input.disabled = true;
+  const strip = document.getElementById('pedomanPreview');
+  if(strip) strip.innerHTML += `<div class="ip upload-note mono" style="font-size:11px;color:var(--ink-soft);">Mengupload…</div>`;
+  try{
+    const urls = await uploadFilesToStorage(files, `pedoman/${projectId}`);
+    tempPedomanImgs.push(...urls);
+  }catch(err){
+    console.error('Gagal upload gambar', err);
+    alert('Gagal upload gambar: ' + err.message);
+  }
+  input.disabled = false;
   renderPedomanPreview();
-  e.target.value = '';
+  input.value = '';
 }
 function renderPedomanPreview(){
   const el = document.getElementById('pedomanPreview');

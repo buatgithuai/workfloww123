@@ -85,6 +85,19 @@
   .section-title h2{font-size:21px;margin:0;}
   .section-title .line{flex:1;height:1px;background:var(--line);}
 
+  .year-divider{
+    font-family:'Bebas Neue'; font-size:15px; letter-spacing:.1em; color:var(--canvas);
+    background:var(--ink); display:inline-block; padding:5px 16px; border-radius:999px;
+    margin:28px 0 10px;
+  }
+  .month-title{display:flex;align-items:center;gap:10px;margin:14px 0 10px;}
+  .month-title h4{font-family:'Bebas Neue';font-size:16px;margin:0;color:var(--denim-deep);letter-spacing:.04em;}
+  .month-title .cnt{
+    font-family:'JetBrains Mono';font-size:11px;color:var(--ink-soft);background:var(--canvas-2);
+    border:1px solid var(--line);border-radius:999px;padding:2px 9px;
+  }
+  .month-title .mline{flex:1;height:1px;background:var(--line);}
+
   .whoami{
     background:var(--white);border:1.5px dashed var(--denim-light);border-radius:12px;
     padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
@@ -514,6 +527,48 @@ function distinctNames(field){
   return Array.from(set);
 }
 
+/* ===================== GROUPING: PER BULAN, DIPISAH PER TAHUN ===================== */
+// Dipakai di list yang berpotensi panjang (Daftar Project & Riwayat) supaya rapi
+// dan tidak berantakan saat sudah lintas bulan/tahun.
+const MONTH_NAMES_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+function groupByMonthYear(list, dateField='createdAt'){
+  const map = {};
+  list.forEach(p=>{
+    const ts = p[dateField] || p.createdAt;
+    const d = new Date(ts);
+    const valid = !isNaN(d);
+    const y = valid ? d.getFullYear() : 0;
+    const m = valid ? d.getMonth() : 0;
+    const key = y + '-' + m;
+    if(!map[key]) map[key] = {year:y, month:m, items:[]};
+    map[key].items.push(p);
+  });
+  return Object.values(map).sort((a,b)=> b.year-a.year || b.month-a.month);
+}
+
+function renderGroupedGrid(list, dateField='createdAt'){
+  if(!list.length) return '';
+  const groups = groupByMonthYear(list, dateField);
+  let html = '';
+  let lastYear = null;
+  groups.forEach(g=>{
+    if(g.year !== lastYear){
+      html += `<div class="year-divider mono">${g.year || 'Tanpa Tanggal'}</div>`;
+      lastYear = g.year;
+    }
+    html += `
+      <div class="month-title">
+        <h4>${MONTH_NAMES_ID[g.month]}</h4>
+        <div class="mline"></div>
+        <span class="cnt">${g.items.length} project</span>
+      </div>
+      <div class="grid">${g.items.map(p=>projectCard(p)).join('')}</div>
+    `;
+  });
+  return html;
+}
+
 /* ===================== REFRESH ===================== */
 // Dengan Firestore onSnapshot, projectsCache sudah otomatis ter-update realtime.
 // Fungsi ini hanya memicu render ulang tampilan (dipanggil setelah aksi simpan/ubah).
@@ -603,7 +658,7 @@ function renderAdminView(){
       ${pill('selesai','Selesai',counts.selesai)}
     </div>
     <div class="section-title"><h2>Daftar Project</h2><div class="line"></div></div>
-    ${sorted.length ? `<div class="grid">${sorted.map(p=>projectCard(p)).join('')}</div>`
+    ${sorted.length ? renderGroupedGrid(sorted)
       : emptyState('Belum ada project di tahap ini','Klik tombol "+ Project Baru" untuk mulai mencatat pesanan client.')}
     <button class="btn fab" onclick="openNewProjectModal()">+ PROJECT BARU</button>
   `;
@@ -686,7 +741,7 @@ function renderPersonView(role){
       <div class="section-title" style="margin-top:32px;"><h2>Sedang Saya Kerjakan</h2><div class="line"></div></div>
       ${proses.length ? `<div class="grid">${proses.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada project berjalan','Mulai kerjakan project dari daftar tugas baru di atas.')}
       <div class="section-title" style="margin-top:32px;"><h2>Riwayat</h2><div class="line"></div></div>
-      ${selesai.length ? `<div class="grid">${selesai.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan desainnya akan tercatat di sini.')}
+      ${selesai.length ? renderGroupedGrid(selesai) : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan desainnya akan tercatat di sini.')}
     `;
   } else {
     const siap = mine.filter(p=>p.status==='desain_selesai').sort((a,b)=>a.createdAt-b.createdAt);
@@ -703,7 +758,7 @@ function renderPersonView(role){
       <div class="section-title" style="margin-top:32px;"><h2>Sedang Saya Produksi</h2><div class="line"></div></div>
       ${proses.length ? `<div class="grid">${proses.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada project berjalan','Mulai produksi dari daftar "Siap Diproduksi" di atas.')}
       <div class="section-title" style="margin-top:32px;"><h2>Riwayat Selesai</h2><div class="line"></div></div>
-      ${selesai.length ? `<div class="grid">${selesai.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan akan tercatat di sini.')}
+      ${selesai.length ? renderGroupedGrid(selesai, 'selesaiAt') : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan akan tercatat di sini.')}
     `;
   }
 }
@@ -998,7 +1053,7 @@ function openDetailModal(id){
     }
   }
 
-  // admin manual override
+  // admin manual override + edit/hapus
   if(state.role==='admin'){
     body += `
       <div class="divider"></div>
@@ -1008,6 +1063,13 @@ function openDetailModal(id){
           ${Object.keys(STATUS_LABEL).map(k=>`<option value="${k}" ${p.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
         </select>
         <button class="btn ghost" onclick="manualSetStatus('${p.id}')">Terapkan</button>
+      </div>
+
+      <div class="divider"></div>
+      <label>Kelola Project (Admin)</label>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn ghost" onclick="openEditProjectModal('${p.id}')">✎ Edit Project</button>
+        <button class="btn rust" onclick="deleteProject('${p.id}')">🗑 Hapus Project</button>
       </div>
     `;
   }
@@ -1127,6 +1189,128 @@ async function manualSetStatus(id){
   if(!p) return;
   p.status = document.getElementById('f_manualstatus').value;
   const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+
+/* ===================== HAPUS PROJECT (ADMIN) ===================== */
+async function deleteProject(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  const yakin = confirm(`Yakin ingin menghapus project "${p.namaKlien}" (${p.id})?\n\nData yang sudah dihapus TIDAK BISA dikembalikan.`);
+  if(!yakin) return;
+  try{
+    await db.collection('projects').doc(id).delete();
+    closeModal();
+    await refresh();
+  }catch(e){
+    console.error('Gagal menghapus project', e);
+    alert('Gagal menghapus project: ' + e.message);
+  }
+}
+
+/* ===================== EDIT PROJECT (ADMIN) ===================== */
+function openEditProjectModal(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+
+  tempUkuran = (p.ukuran && p.ukuran.length) ? p.ukuran.map(u=>({...u})) : [{ukuran:'', qty:1}];
+  tempRefImgs = [...(p.referensi||[])];
+  tempRefUploadId = p.id;
+
+  const desainerDl = distinctNames('namaDesainer').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  const produksiDl = distinctNames('namaProduksi').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  const viaOptions = ['WhatsApp','Telepon','Datang Langsung','Instagram / Sosial Media','Lainnya'];
+
+  renderModal(`
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>Edit Project</h2>
+    <div class="modal-sub mono">${p.id}</div>
+
+    <label>Nama Client</label>
+    <input type="text" id="f_nama" value="${escapeHtml(p.namaKlien||'')}">
+
+    <div class="row2">
+      <div>
+        <label>No. HP / WA</label>
+        <input type="tel" id="f_hp" value="${escapeHtml(p.noHp||'')}">
+      </div>
+      <div>
+        <label>Via Masuk</label>
+        <select id="f_via">
+          ${viaOptions.map(v=>`<option ${p.via===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <label>Brief Desain</label>
+    <textarea id="f_brief">${escapeHtml(p.briefDesain||'')}</textarea>
+
+    <label>List Ukuran & Qty</label>
+    <div id="ukuranWrap"></div>
+    <button type="button" class="btn ghost small" onclick="addUkuranRow()">+ Tambah Ukuran</button>
+
+    <label>Gambar Referensi dari Client</label>
+    <input type="file" id="f_ref" accept="image/*" multiple onchange="handleRefUpload(event)">
+    <div class="filehint">Upload gambar baru untuk menambah. Klik × pada gambar untuk menghapusnya.</div>
+    <div class="upload-status mono" id="refUploadStatus"></div>
+    <div class="img-preview-strip" id="refPreview"></div>
+
+    <div class="divider"></div>
+    <div class="section-title" style="margin:0 0 4px;"><h2 style="font-size:18px;">Penugasan & Komisi</h2><div class="line"></div></div>
+
+    <div class="row2">
+      <div>
+        <label>Nama Desainer (Ditugaskan)</label>
+        <input type="text" id="f_desainer" list="dl_desainer" value="${escapeHtml(p.namaDesainer||'')}">
+        <datalist id="dl_desainer">${desainerDl}</datalist>
+      </div>
+      <div>
+        <label>Nama Bagian Produksi (Ditugaskan)</label>
+        <input type="text" id="f_produksi" list="dl_produksi" value="${escapeHtml(p.namaProduksi||'')}">
+        <datalist id="dl_produksi">${produksiDl}</datalist>
+      </div>
+    </div>
+    <label>Komisi Produksi per Pcs (Rp)</label>
+    <input type="number" min="0" id="f_komisi" value="${p.komisiPerPcs||0}">
+    <div class="filehint">Total komisi akan dihitung otomatis: Komisi per Pcs × Total Pcs.</div>
+
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="openDetailModal('${p.id}')">Batal</button>
+      <button class="btn block" onclick="submitEditProject('${p.id}')">Simpan Perubahan</button>
+    </div>
+  `);
+  renderUkuranRows();
+  renderRefPreview();
+}
+
+async function submitEditProject(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+
+  const nama = document.getElementById('f_nama').value.trim();
+  const hp = document.getElementById('f_hp').value.trim();
+  const via = document.getElementById('f_via').value;
+  const brief = document.getElementById('f_brief').value.trim();
+  const namaDesainer = document.getElementById('f_desainer').value.trim();
+  const namaProduksi = document.getElementById('f_produksi').value.trim();
+  const komisiPerPcs = parseFloat(document.getElementById('f_komisi').value) || 0;
+
+  if(!nama || !hp || !brief){
+    alert('Mohon lengkapi Nama Client, No. HP, dan Brief Desain.');
+    return;
+  }
+  const ukuranClean = tempUkuran.filter(u=>u.ukuran.trim()!=='');
+
+  const updated = {
+    ...p,
+    namaKlien: nama, noHp: hp, via: via, briefDesain: brief,
+    ukuran: ukuranClean, referensi: tempRefImgs,
+    namaDesainer, namaProduksi, komisiPerPcs
+  };
+
+  const ok = await saveProject(updated);
   if(!ok) return;
   closeModal();
   await refresh();

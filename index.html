@@ -344,40 +344,65 @@ function compressImage(file, maxDim=1600, quality=0.75){
   });
 }
 
-function withTimeout(promise, ms, message){
-  let timer;
-  const timeout = new Promise((_,reject)=>{ timer = setTimeout(()=>reject(new Error(message)), ms); });
-  return Promise.race([promise, timeout]).finally(()=>clearTimeout(timer));
+// Upload satu file ke Cloudinary pakai XMLHttpRequest (bukan fetch) supaya bisa
+// melacak progress upload byte-per-byte secara real-time lewat xhr.upload.onprogress.
+function uploadOneFile(file, folder, onBytesProgress){
+  return new Promise((resolve, reject)=>{
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('folder', folder);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`);
+    xhr.timeout = 45000;
+
+    xhr.upload.onprogress = (e) => {
+      if(e.lengthComputable && onBytesProgress) onBytesProgress(e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      let data = null;
+      try{ data = JSON.parse(xhr.responseText); }catch(e){ /* respons bukan JSON */ }
+      if(xhr.status >= 200 && xhr.status < 300 && data && data.secure_url){
+        resolve(data.secure_url);
+      } else {
+        const msg = data?.error?.message || `Upload gagal (status ${xhr.status}). Cek nama Cloud Name / Upload Preset sudah benar dan bermode Unsigned.`;
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Gagal terhubung ke Cloudinary (cek koneksi internet, atau kemungkinan diblokir extension/adblocker/firewall).'));
+    xhr.ontimeout = () => reject(new Error('Upload terlalu lama / macet (koneksi sangat lambat, atau server Cloudinary tidak merespons).'));
+    xhr.send(formData);
+  });
 }
 
 // Upload beberapa file sekaligus (paralel), masing-masing dikompres dulu, ke Cloudinary.
-// onProgress(doneCount, totalCount) dipanggil tiap ada file yang selesai, untuk update UI.
+// onProgress(percent, doneCount, totalCount) dipanggil berkali-kali selama upload berjalan,
+// dengan percent = persentase gabungan dari semua file (0-100), untuk update UI real-time.
 async function uploadFilesToStorage(files, folder, onProgress){
   if(!CLOUDINARY_READY) throw new Error('Cloudinary belum dikonfigurasi. Isi cloudName & uploadPreset di bagian atas kode.');
-  let done = 0;
   const total = files.length;
-  const uploadOne = async (f) => {
+  let done = 0;
+  const loadedBytes = new Array(total).fill(0);
+  const totalBytes = new Array(total).fill(1); // default 1 supaya tidak dibagi 0 sebelum ada info ukuran asli
+  const reportProgress = () => {
+    if(!onProgress) return;
+    const sumLoaded = loadedBytes.reduce((a,b)=>a+b,0);
+    const sumTotal = totalBytes.reduce((a,b)=>a+b,0);
+    const pct = sumTotal ? Math.min(99, Math.round((sumLoaded/sumTotal)*100)) : 0;
+    onProgress(pct, done, total);
+  };
+  const uploadOne = async (idx, f) => {
     const compressed = await compressImage(f);
-    const formData = new FormData();
-    formData.append('file', compressed);
-    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    formData.append('folder', folder);
-    const res = await withTimeout(
-      fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData
-      }),
-      45000,
-      'Upload terlalu lama (koneksi lambat, atau Cloudinary belum dikonfigurasi dengan benar — cek console browser untuk detail error).'
-    );
-    if(!res.ok){
-      const errBody = await res.json().catch(()=>null);
-      throw new Error(errBody?.error?.message || `Upload gagal (status ${res.status})`);
-    }
-    const data = await res.json();
+    totalBytes[idx] = compressed.size || 1;
+    const url = await uploadOneFile(compressed, folder, (loaded, totalB)=>{
+      loadedBytes[idx] = loaded;
+      totalBytes[idx] = totalB;
+      reportProgress();
+    });
     done++;
-    if(onProgress) onProgress(done, total);
-    return data.secure_url;
+    reportProgress();
+    return url;
   };
   // Batasi maksimal 3 upload berjalan bersamaan agar tidak membebani koneksi mobile.
   const results = new Array(files.length);
@@ -385,11 +410,12 @@ async function uploadFilesToStorage(files, folder, onProgress){
   async function worker(){
     while(cursor < files.length){
       const idx = cursor++;
-      results[idx] = await uploadOne(files[idx]);
+      results[idx] = await uploadOne(idx, files[idx]);
     }
   }
   const workers = Array.from({length: Math.min(3, files.length)}, worker);
   await Promise.all(workers);
+  if(onProgress) onProgress(100, total, total);
   return results;
 }
 
@@ -839,10 +865,10 @@ async function handleRefUpload(e){
   const input = e.target;
   const statusEl = document.getElementById('refUploadStatus');
   input.disabled = true;
-  statusEl.textContent = `Mengupload 0/${files.length}…`;
+  statusEl.textContent = `Mengupload… 0%`;
   try{
-    const urls = await uploadFilesToStorage(files, `referensi/${tempRefUploadId}`, (done,total)=>{
-      statusEl.textContent = `Mengupload ${done}/${total}…`;
+    const urls = await uploadFilesToStorage(files, `referensi/${tempRefUploadId}`, (pct,done,total)=>{
+      statusEl.textContent = total>1 ? `Mengupload ${done}/${total} — ${pct}%` : `Mengupload… ${pct}%`;
     });
     tempRefImgs.push(...urls);
     statusEl.textContent = '';
@@ -1006,10 +1032,10 @@ async function handlePedomanUpload(e, projectId){
   const input = e.target;
   const statusEl = document.getElementById('pedomanUploadStatus');
   input.disabled = true;
-  if(statusEl) statusEl.textContent = `Mengupload 0/${files.length}…`;
+  if(statusEl) statusEl.textContent = `Mengupload… 0%`;
   try{
-    const urls = await uploadFilesToStorage(files, `pedoman/${projectId}`, (done,total)=>{
-      if(statusEl) statusEl.textContent = `Mengupload ${done}/${total}…`;
+    const urls = await uploadFilesToStorage(files, `pedoman/${projectId}`, (pct,done,total)=>{
+      if(statusEl) statusEl.textContent = total>1 ? `Mengupload ${done}/${total} — ${pct}%` : `Mengupload… ${pct}%`;
     });
     tempPedomanImgs.push(...urls);
     if(statusEl) statusEl.textContent = '';

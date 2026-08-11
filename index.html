@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TenX Apparel — Alur Produksi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F6F3EC;
+    --canvas-2:#EFEADE;
+    --ink:#211D1A;
+    --ink-soft:#5B5449;
+    --denim:#33507A;
+    --denim-deep:#233858;
+    --denim-light:#6B87AC;
+    --amber:#C98A2C;
+    --purple:#7A6FB0;
+    --green:#4C7A5E;
+    --rust:#B15A3D;
+    --line:#DAD3C3;
+    --white:#FFFCF6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--canvas);
+    background-image: radial-gradient(circle at 1px 1px, rgba(33,29,26,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Bebas Neue', sans-serif; letter-spacing:0.03em; }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  a{color:inherit;}
+
+  header.top{
+    background:var(--ink); color:var(--canvas); padding:18px 28px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+    border-bottom:4px solid var(--denim); position:sticky; top:0; z-index:30;
+  }
+  header.top .brand{display:flex;align-items:center;gap:12px;}
+  header.top .brand .mark{
+    width:38px;height:38px;border-radius:50%; background:var(--denim);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bebas Neue';font-size:18px;color:var(--canvas); border:2px dashed var(--canvas-2);
+  }
+  header.top h1{font-size:28px;margin:0;line-height:1;}
+  header.top .sub{font-size:11px;color:var(--denim-light);text-transform:uppercase;letter-spacing:0.15em;margin-top:2px;}
+
+  .role-switch{display:flex;gap:6px;background:rgba(255,255,255,0.06);padding:5px;border-radius:999px;flex-wrap:wrap;}
+  .role-switch button{
+    border:none;background:transparent;color:var(--canvas);
+    padding:8px 16px;border-radius:999px;font-family:'Bebas Neue';
+    font-size:13.5px;letter-spacing:.06em;cursor:pointer;transition:.15s;
+  }
+  .role-switch button.active{background:var(--denim);color:white;}
+
+  main{max-width:1180px;margin:0 auto;padding:26px 22px 90px;}
+
+  .subnav{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+  .subnav button{
+    font-family:'Bebas Neue';font-size:14px;letter-spacing:.05em;
+    background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);
+    padding:9px 16px;border-radius:8px;cursor:pointer;
+  }
+  .subnav button.active{background:var(--ink);border-color:var(--ink);color:var(--canvas);}
+
+  .stage-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
+  .stage-pill{
+    font-family:'Bebas Neue';font-size:12.5px;letter-spacing:.05em;
+    padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);
+    background:var(--white);color:var(--ink-soft);cursor:pointer;
+  }
+  .stage-pill .count{
+    display:inline-block;margin-left:6px;background:var(--ink);color:var(--canvas);
+    border-radius:999px;padding:0 7px;font-family:'JetBrains Mono';font-size:11px;
+  }
+  .stage-pill.active{border-color:var(--denim);background:var(--denim);color:white;}
+  .stage-pill.active .count{background:rgba(255,255,255,0.25);}
+
+  .section-title{display:flex;align-items:center;gap:10px;margin:8px 0 14px;}
+  .section-title h2{font-size:21px;margin:0;}
+  .section-title .line{flex:1;height:1px;background:var(--line);}
+
+  .whoami{
+    background:var(--white);border:1.5px dashed var(--denim-light);border-radius:12px;
+    padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .whoami .greet{font-family:'Bebas Neue';font-size:19px;}
+  .whoami .greet span{color:var(--denim);}
+  .whoami .change{font-size:12px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;background:none;border:none;}
+  .whoami-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex:1;}
+  .whoami-form input{max-width:260px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;}
+  .tag-card{
+    position:relative; background:var(--white); border:1.5px dashed #C9BFA8; border-radius:10px;
+    padding:18px 18px 16px 26px; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .tag-card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(33,29,26,0.08);}
+  .tag-card::before{
+    content:"";position:absolute;left:10px;top:50%;transform:translateY(-50%);
+    width:11px;height:11px;border-radius:50%; background:var(--canvas);border:1.5px solid #C9BFA8;
+    box-shadow: inset 0 0 0 2px var(--white);
+  }
+  .tag-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .tag-id{font-size:11px;color:var(--ink-soft);}
+  .tag-card h3{margin:6px 0 2px;font-size:20px;}
+  .tag-meta{font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;}
+  .assign-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .assign-chip{
+    font-size:11px;background:var(--canvas-2);border:1px solid var(--line);border-radius:6px;
+    padding:3px 8px;color:var(--ink-soft);
+  }
+  .assign-chip b{color:var(--ink);font-weight:600;}
+  .tag-brief{font-size:13px;color:var(--ink);line-height:1.4;margin-bottom:10px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .komisi-tag{
+    font-family:'JetBrains Mono';font-size:11.5px;background:#F3E7CF;color:#7A5A17;
+    border:1px solid #E3CB93;border-radius:6px;padding:4px 8px;display:inline-block;margin-bottom:8px;
+  }
+  .tag-foot{display:flex;justify-content:space-between;align-items:center;}
+  .badge{
+    font-family:'Bebas Neue';font-size:11.5px;letter-spacing:.06em;
+    padding:4px 10px;border-radius:999px;color:white;transform:rotate(-2deg); display:inline-block;
+  }
+  .badge.baru{background:var(--amber);}
+  .badge.diproses_desainer{background:var(--denim);}
+  .badge.desain_selesai{background:var(--purple);}
+  .badge.diproses_produksi{background:var(--rust);}
+  .badge.selesai{background:var(--green);}
+
+  .thumbs{display:flex;gap:6px;}
+  .thumbs img{width:34px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line);}
+
+  .empty{
+    border:1.5px dashed var(--line);border-radius:10px;padding:40px 20px;
+    text-align:center;color:var(--ink-soft);background:rgba(255,255,255,0.4);
+  }
+  .empty .display{font-size:24px;color:var(--ink);margin-bottom:6px;}
+
+  .btn{
+    font-family:'Bebas Neue';letter-spacing:.05em;font-size:14px;
+    border:none;border-radius:8px;padding:10px 18px;cursor:pointer; background:var(--denim);color:white;
+  }
+  .btn:hover{background:var(--denim-deep);}
+  .btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
+  .btn.ghost:hover{border-color:var(--denim);color:var(--denim);}
+  .btn.green{background:var(--green);}
+  .btn.rust{background:var(--rust);}
+  .btn.small{padding:6px 12px;font-size:12px;}
+  .btn.block{width:100%;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .fab{position:fixed;right:26px;bottom:26px;box-shadow:0 8px 20px rgba(51,80,122,0.35);padding:14px 24px;font-size:16px;border-radius:999px;z-index:40;}
+
+  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=tel],input[type=date],input[type=number],textarea,select{
+    width:100%;border:1.5px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-family:'Work Sans';font-size:14px;background:var(--white);color:var(--ink);
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--denim-light);border-color:var(--denim);}
+  textarea{resize:vertical;min-height:80px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  .ukuran-row{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;margin-bottom:8px;align-items:center;}
+  .ukuran-row button{background:none;border:none;color:var(--rust);cursor:pointer;font-size:18px;}
+  .filehint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+  .img-preview-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .img-preview-strip .ip{position:relative;}
+  .img-preview-strip img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);}
+  .img-preview-strip .rm{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rust);color:white;border:none;font-size:11px;cursor:pointer;line-height:1;}
+
+  .overlay{position:fixed;inset:0;background:rgba(33,29,26,0.55);display:flex;align-items:flex-start;justify-content:center;padding:36px 16px;overflow-y:auto;z-index:50;}
+  .modal{background:var(--canvas);border-radius:14px;max-width:660px;width:100%;padding:26px 26px 24px;position:relative;border:1px solid var(--line);}
+  .modal h2{margin:0 0 2px;font-size:25px;}
+  .modal .close{position:absolute;top:16px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);}
+  .modal-sub{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+  .divider{height:1px;background:var(--line);margin:18px 0;}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 10px;font-size:13.5px;margin-bottom:6px;}
+  .kv b{color:var(--ink-soft);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
+  .note-box{background:var(--canvas-2);border:1px dashed var(--line);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--ink-soft);margin-top:10px;}
+  .komisi-box{
+    background:#FBF3E1;border:1.5px dashed #E3CB93;border-radius:10px;padding:14px 16px;margin-top:14px;
+  }
+  .komisi-box .big{font-family:'Bebas Neue';font-size:26px;color:#7A5A17;}
+  .komisi-box .lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:#8A6B2A;}
+
+  table.rekap{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.rekap th{text-align:left;font-family:'Bebas Neue';font-size:13px;letter-spacing:.04em;color:var(--ink-soft);border-bottom:2px solid var(--ink);padding:8px 10px;}
+  table.rekap td{padding:10px;border-bottom:1px solid var(--line);}
+  table.rekap tr:last-child td{border-bottom:none;}
+  table.rekap tfoot td{font-family:'Bebas Neue';font-size:15px;border-top:2px solid var(--ink);border-bottom:none;}
+
+  .loading{padding:80px 20px;text-align:center;color:var(--ink-soft);font-family:'Bebas Neue';font-size:18px;letter-spacing:.05em;}
+  .sync-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:34px;}
+
+  @media(max-width:640px){
+    .row2,.row3{grid-template-columns:1fr;}
+    header.top{padding:14px 16px;}
+    main{padding:18px 12px 90px;}
+    .kv{grid-template-columns:120px 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="mark">TX</div>
+    <div>
+      <h1>TENX APPAREL</h1>
+      <div class="sub">Alur Kerja Produksi</div>
+    </div>
+  </div>
+  <div class="role-switch" id="roleSwitch"></div>
+</header>
+
+<main id="app"><div class="loading">Memuat data…</div></main>
+<div id="modalRoot"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+/* =====================================================================
+   KONFIGURASI FIREBASE — ISI DENGAN NILAI DARI FIREBASE CONSOLE ANDA
+   1) Buka https://console.firebase.google.com → Buat Project (gratis)
+   2) Di project itu, buka Build > Firestore Database > Create database
+      (mulai dengan mode "test" dulu, nanti rules diganti lihat firestore.rules)
+   3) Buka ⚙️ Project Settings > General > scroll ke "Your apps" >
+      klik ikon "</>" (Web) untuk daftarkan web app > salin objek firebaseConfig
+   4) Tempel nilainya menggantikan placeholder di bawah ini
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDZlsRdjfsrI2JMRAPYdEu94NVye4LeENE",
+  authDomain: "workflow-1602d.firebaseapp.com",
+  projectId: "workflow-1602d",
+  storageBucket: "workflow-1602d.firebasestorage.app",
+  messagingSenderId: "389695059216",
+  appId: "1:389695059216:web:0c549644631d853529e195",
+  measurementId: "G-FF5TNECQKW"
+};
+
+const CONFIG_READY = !firebaseConfig.apiKey.startsWith('ISI_');
+let db = null;
+if(CONFIG_READY){
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}
+
+/* ===================== DATA LAYER (Firebase Firestore = realtime lintas device) ===================== */
+// Firestore menyimpan objek JS langsung (tidak perlu mapping snake_case seperti SQL)
+let projectsCache = [];
+
+async function saveProject(p){
+  if(!CONFIG_READY) return false;
+  try{
+    await db.collection('projects').doc(p.id).set(p);
+    return true;
+  }catch(e){
+    console.error('Gagal menyimpan data', e);
+    alert('Gagal menyimpan data: ' + e.message);
+    return false;
+  }
+}
+
+// "Nama saya" bersifat preferensi lokal per perangkat, disimpan di localStorage biasa
+async function getMyName(role){
+  try{ return localStorage.getItem('tenx_myname_' + role) || ''; }catch(e){ return ''; }
+}
+async function setMyName(role, name){
+  try{ localStorage.setItem('tenx_myname_' + role, name); }catch(e){}
+}
+
+function genId(){
+  const t = Date.now().toString(36).toUpperCase();
+  const r = Math.random().toString(36).slice(2,5).toUpperCase();
+  return 'TX-' + new Date().getFullYear() + '-' + t.slice(-5) + r;
+}
+
+/* ===================== REALTIME: onSnapshot mendorong data terbaru ke semua device ===================== */
+function subscribeRealtime(){
+  if(!CONFIG_READY) return;
+  db.collection('projects').orderBy('createdAt', 'desc')
+    .onSnapshot(snapshot => {
+      projectsCache = snapshot.docs.map(d => d.data());
+      state.loading = false;
+      render();
+    }, err => {
+      console.error('Realtime error', err);
+      state.loading = false;
+      render();
+    });
+}
+
+/* ===================== STATE ===================== */
+let state = {
+  role: 'admin',       // 'admin' | 'desainer' | 'produksi'
+  adminView: 'projects',// 'projects' | 'rekap'
+  stage: 'all',
+  myName: '',
+  editingName: false,
+  loading: true
+};
+
+const STATUS_LABEL = {
+  baru: 'Baru / Belum Dikerjakan',
+  diproses_desainer: 'Diproses Desainer',
+  desain_selesai: 'Desain Selesai',
+  diproses_produksi: 'Diproses Produksi',
+  selesai: 'Selesai'
+};
+
+/* ===================== HELPERS ===================== */
+function fmtDate(iso_or_ts){
+  if(!iso_or_ts) return '-';
+  const d = new Date(iso_or_ts);
+  if(isNaN(d)) return '-';
+  return d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+}
+function rupiah(n){
+  return 'Rp' + Math.round(Number(n)||0).toLocaleString('id-ID');
+}
+function totalQty(p){ return (p.ukuran||[]).reduce((s,u)=>s+(parseInt(u.qty)||0),0); }
+function totalKomisi(p){ return totalQty(p) * (parseFloat(p.komisiPerPcs)||0); }
+function fileToDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function escapeHtml(str){
+  if(!str) return '';
+  const d = document.createElement('div');
+  d.innerText = str;
+  return d.innerHTML;
+}
+function distinctNames(field){
+  const set = new Set();
+  projectsCache.forEach(p=>{ if(p[field]) set.add(p[field]); });
+  return Array.from(set);
+}
+
+/* ===================== REFRESH ===================== */
+// Dengan Firestore onSnapshot, projectsCache sudah otomatis ter-update realtime.
+// Fungsi ini hanya memicu render ulang tampilan (dipanggil setelah aksi simpan/ubah).
+async function refresh(render_after=true){
+  if(render_after) render();
+}
+
+/* ===================== ROLE SWITCH ===================== */
+function renderRoleSwitch(){
+  const el = document.getElementById('roleSwitch');
+  el.innerHTML = `
+    <button class="${state.role==='admin'?'active':''}" onclick="setRole('admin')">ADMIN</button>
+    <button class="${state.role==='desainer'?'active':''}" onclick="setRole('desainer')">DESAINER</button>
+    <button class="${state.role==='produksi'?'active':''}" onclick="setRole('produksi')">PRODUKSI</button>
+  `;
+}
+async function setRole(role){
+  state.role = role;
+  state.stage = 'all';
+  state.editingName = false;
+  if(role==='desainer' || role==='produksi'){
+    state.myName = await getMyName(role);
+  }
+  render();
+}
+
+/* ===================== ROUTER ===================== */
+function render(){
+  renderRoleSwitch();
+  const app = document.getElementById('app');
+
+  if(!CONFIG_READY){
+    app.innerHTML = `
+      <div class="empty">
+        <div class="display">Belum Terhubung ke Firebase</div>
+        <div style="max-width:480px;margin:8px auto 0;line-height:1.6;">
+          Isi objek <b>firebaseConfig</b> di bagian atas kode (dekat tag
+          &lt;script src="...firebase-firestore-compat.js"&gt;) dengan nilai dari
+          Firebase Console project Anda (Project Settings &gt; General &gt; Your apps),
+          lalu simpan ulang file ini. Pastikan juga Firestore Database sudah dibuat
+          dan security rules sudah diterapkan (lihat <span class="mono">firestore.rules</span>).
+        </div>
+      </div>`;
+    return;
+  }
+
+  if(state.loading){
+    app.innerHTML = `<div class="loading">Memuat data…</div>`;
+    return;
+  }
+  if(state.role === 'admin') app.innerHTML = renderAdminView();
+  else if(state.role === 'desainer') app.innerHTML = renderPersonView('desainer');
+  else app.innerHTML = renderPersonView('produksi');
+
+  app.innerHTML += `<div class="sync-note">Realtime aktif — perubahan dari Admin, Desainer, atau Produksi di device manapun otomatis tersinkron ke semua layar.</div>`;
+}
+
+/* ===================== ADMIN VIEW ===================== */
+function renderAdminView(){
+  const sub = `
+    <div class="subnav">
+      <button class="${state.adminView==='projects'?'active':''}" onclick="setAdminView('projects')">Daftar Project</button>
+      <button class="${state.adminView==='rekap'?'active':''}" onclick="setAdminView('rekap')">Rekap Komisi Produksi</button>
+    </div>
+  `;
+  if(state.adminView==='rekap') return sub + renderRekapKomisi();
+
+  const all = projectsCache;
+  const counts = {
+    all: all.length,
+    baru: all.filter(p=>p.status==='baru').length,
+    diproses_desainer: all.filter(p=>p.status==='diproses_desainer').length,
+    desain_selesai: all.filter(p=>p.status==='desain_selesai').length,
+    diproses_produksi: all.filter(p=>p.status==='diproses_produksi').length,
+    selesai: all.filter(p=>p.status==='selesai').length,
+  };
+  const filtered = state.stage==='all' ? all : all.filter(p=>p.status===state.stage);
+  const sorted = [...filtered].sort((a,b)=> b.createdAt - a.createdAt);
+
+  return sub + `
+    <div class="stage-nav">
+      ${pill('all','Semua',counts.all)}
+      ${pill('baru','Baru',counts.baru)}
+      ${pill('diproses_desainer','Diproses Desainer',counts.diproses_desainer)}
+      ${pill('desain_selesai','Desain Selesai',counts.desain_selesai)}
+      ${pill('diproses_produksi','Diproses Produksi',counts.diproses_produksi)}
+      ${pill('selesai','Selesai',counts.selesai)}
+    </div>
+    <div class="section-title"><h2>Daftar Project</h2><div class="line"></div></div>
+    ${sorted.length ? `<div class="grid">${sorted.map(p=>projectCard(p)).join('')}</div>`
+      : emptyState('Belum ada project di tahap ini','Klik tombol "+ Project Baru" untuk mulai mencatat pesanan client.')}
+    <button class="btn fab" onclick="openNewProjectModal()">+ PROJECT BARU</button>
+  `;
+}
+function setAdminView(v){ state.adminView = v; state.stage='all'; render(); }
+
+function renderRekapKomisi(){
+  const map = {};
+  projectsCache.forEach(p=>{
+    const name = (p.namaProduksi||'').trim();
+    if(!name) return;
+    if(!map[name]) map[name] = {name, jumlahSelesai:0, pcsSelesai:0, komisiFinal:0, jumlahBerjalan:0, pcsBerjalan:0, komisiBerjalan:0};
+    const qty = totalQty(p), kom = totalKomisi(p);
+    if(p.status==='selesai'){
+      map[name].jumlahSelesai++; map[name].pcsSelesai+=qty; map[name].komisiFinal+=kom;
+    } else if(p.status==='desain_selesai' || p.status==='diproses_produksi'){
+      map[name].jumlahBerjalan++; map[name].pcsBerjalan+=qty; map[name].komisiBerjalan+=kom;
+    }
+  });
+  const rows = Object.values(map).sort((a,b)=>b.komisiFinal-a.komisiFinal);
+  const grandFinal = rows.reduce((s,r)=>s+r.komisiFinal,0);
+  const grandBerjalan = rows.reduce((s,r)=>s+r.komisiBerjalan,0);
+
+  if(!rows.length){
+    return emptyState('Belum ada data komisi','Rekap akan muncul otomatis setelah project ditugaskan ke bagian Produksi.');
+  }
+
+  return `
+    <div class="section-title"><h2>Rekap Komisi per Bagian Produksi</h2><div class="line"></div></div>
+    <div style="overflow-x:auto;">
+    <table class="rekap">
+      <thead><tr>
+        <th>Nama Produksi</th><th>Project Selesai</th><th>Pcs Selesai</th><th>Komisi Final</th>
+        <th>Project Berjalan</th><th>Pcs Berjalan</th><th>Komisi Berjalan (estimasi)</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`
+          <tr>
+            <td><b>${escapeHtml(r.name)}</b></td>
+            <td>${r.jumlahSelesai}</td>
+            <td>${r.pcsSelesai}</td>
+            <td class="mono">${rupiah(r.komisiFinal)}</td>
+            <td>${r.jumlahBerjalan}</td>
+            <td>${r.pcsBerjalan}</td>
+            <td class="mono">${rupiah(r.komisiBerjalan)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="3">TOTAL</td><td class="mono">${rupiah(grandFinal)}</td><td colspan="2"></td><td class="mono">${rupiah(grandBerjalan)}</td></tr>
+      </tfoot>
+    </table>
+    </div>
+    <div class="note-box" style="margin-top:16px;">Komisi Final dihitung dari project berstatus <b>Selesai</b>. Komisi Berjalan adalah estimasi dari project yang sudah masuk tahap Desain Selesai / Diproses Produksi namun belum ditandai Selesai.</div>
+  `;
+}
+
+/* ===================== DESAINER / PRODUKSI VIEW ===================== */
+function renderPersonView(role){
+  if(!state.myName || state.editingName){
+    return renderWhoAmI(role);
+  }
+  const label = role==='desainer' ? 'namaDesainer' : 'namaProduksi';
+  const mine = projectsCache.filter(p => (p[label]||'').trim().toLowerCase() === state.myName.trim().toLowerCase());
+
+  const whoBar = `
+    <div class="whoami">
+      <div class="greet">HALO, <span>${escapeHtml(state.myName)}</span></div>
+      <button class="change" onclick="editMyName()">Ganti nama</button>
+    </div>
+  `;
+
+  if(role==='desainer'){
+    const baru = mine.filter(p=>p.status==='baru').sort((a,b)=>a.createdAt-b.createdAt);
+    const proses = mine.filter(p=>p.status==='diproses_desainer').sort((a,b)=>a.createdAt-b.createdAt);
+    const selesai = mine.filter(p=>['desain_selesai','diproses_produksi','selesai'].includes(p.status)).sort((a,b)=>b.createdAt-a.createdAt);
+    return whoBar + `
+      <div class="section-title"><h2>Tugas Baru untuk Saya</h2><div class="line"></div></div>
+      ${baru.length ? `<div class="grid">${baru.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada tugas baru','Project yang ditugaskan Admin ke nama Anda akan muncul di sini.')}
+      <div class="section-title" style="margin-top:32px;"><h2>Sedang Saya Kerjakan</h2><div class="line"></div></div>
+      ${proses.length ? `<div class="grid">${proses.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada project berjalan','Mulai kerjakan project dari daftar tugas baru di atas.')}
+      <div class="section-title" style="margin-top:32px;"><h2>Riwayat</h2><div class="line"></div></div>
+      ${selesai.length ? `<div class="grid">${selesai.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan desainnya akan tercatat di sini.')}
+    `;
+  } else {
+    const siap = mine.filter(p=>p.status==='desain_selesai').sort((a,b)=>a.createdAt-b.createdAt);
+    const proses = mine.filter(p=>p.status==='diproses_produksi').sort((a,b)=>a.createdAt-b.createdAt);
+    const selesai = mine.filter(p=>p.status==='selesai').sort((a,b)=>b.createdAt-a.createdAt);
+    const komisiFinal = selesai.reduce((s,p)=>s+totalKomisi(p),0);
+    return whoBar + `
+      <div class="komisi-box">
+        <div class="lbl">Total Komisi Terkumpul (Project Selesai)</div>
+        <div class="big">${rupiah(komisiFinal)}</div>
+      </div>
+      <div class="section-title" style="margin-top:24px;"><h2>Siap Diproduksi</h2><div class="line"></div></div>
+      ${siap.length ? `<div class="grid">${siap.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada project siap produksi','Project akan muncul di sini setelah desain selesai dikerjakan Desainer.')}
+      <div class="section-title" style="margin-top:32px;"><h2>Sedang Saya Produksi</h2><div class="line"></div></div>
+      ${proses.length ? `<div class="grid">${proses.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada project berjalan','Mulai produksi dari daftar "Siap Diproduksi" di atas.')}
+      <div class="section-title" style="margin-top:32px;"><h2>Riwayat Selesai</h2><div class="line"></div></div>
+      ${selesai.length ? `<div class="grid">${selesai.map(p=>projectCard(p)).join('')}</div>` : emptyState('Belum ada riwayat','Project yang sudah Anda selesaikan akan tercatat di sini.')}
+    `;
+  }
+}
+
+function renderWhoAmI(role){
+  const label = role==='desainer' ? 'namaDesainer' : 'namaProduksi';
+  const names = distinctNames(label);
+  const dl = names.map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  return `
+    <div class="whoami">
+      <div class="whoami-form">
+        <div>
+          <label style="margin:0 0 4px;">Nama Anda (${role==='desainer'?'Desainer':'Bagian Produksi'})</label>
+          <input type="text" id="who_input" list="who_dl" placeholder="Ketik nama Anda persis seperti diinput Admin">
+          <datalist id="who_dl">${dl}</datalist>
+        </div>
+        <button class="btn" style="margin-top:18px;" onclick="confirmMyName('${role}')">Lihat Tugas Saya</button>
+      </div>
+    </div>
+    ${emptyState('Menunggu nama Anda','Nama ini dipakai untuk menyaring project yang ditugaskan Admin khusus untuk Anda.')}
+  `;
+}
+function editMyName(){ state.editingName = true; render(); }
+async function confirmMyName(role){
+  const val = document.getElementById('who_input').value.trim();
+  if(!val){ alert('Nama tidak boleh kosong.'); return; }
+  state.myName = val;
+  state.editingName = false;
+  await setMyName(role, val);
+  render();
+}
+
+function pill(key,label,count){
+  return `<button class="stage-pill ${state.stage===key?'active':''}" onclick="setStage('${key}')">${label} <span class="count">${count}</span></button>`;
+}
+function setStage(key){ state.stage = key; render(); }
+function emptyState(title,sub){
+  return `<div class="empty"><div class="display">${title}</div><div>${sub}</div></div>`;
+}
+
+/* ===================== PROJECT CARD ===================== */
+function projectCard(p){
+  const refImgs = (p.referensi||[]).slice(0,4);
+  const qty = totalQty(p);
+  return `
+    <div class="tag-card" onclick="openDetailModal('${p.id}')">
+      <div class="tag-top">
+        <span class="tag-id mono">${p.id}</span>
+        <span class="badge ${p.status}">${STATUS_LABEL[p.status]}</span>
+      </div>
+      <h3>${escapeHtml(p.namaKlien)}</h3>
+      <div class="tag-meta">${escapeHtml(p.via)} · ${p.noHp} · masuk ${fmtDate(p.createdAt)} · ${qty} pcs</div>
+      <div class="assign-row">
+        <span class="assign-chip">Desainer: <b>${escapeHtml(p.namaDesainer||'-')}</b></span>
+        <span class="assign-chip">Produksi: <b>${escapeHtml(p.namaProduksi||'-')}</b></span>
+      </div>
+      <div class="tag-brief">${escapeHtml(p.briefDesain)}</div>
+      ${p.komisiPerPcs ? `<div class="komisi-tag">Komisi: ${rupiah(p.komisiPerPcs)}/pcs → total ${rupiah(totalKomisi(p))}</div>` : ''}
+      <div class="tag-foot">
+        <div class="thumbs">${refImgs.map(src=>`<img src="${src}">`).join('')}${(p.referensi||[]).length>4?`<span class="mono" style="font-size:11px;color:var(--ink-soft);align-self:center;">+${p.referensi.length-4}</span>`:''}</div>
+        ${p.deadline ? `<span class="mono" style="font-size:11.5px;color:var(--rust);">DL ${fmtDate(p.deadline)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ===================== MODAL: NEW PROJECT (ADMIN) ===================== */
+let tempUkuran = [{ukuran:'S', qty:1},{ukuran:'M', qty:1}];
+let tempRefImgs = [];
+
+function openNewProjectModal(){
+  tempUkuran = [{ukuran:'S', qty:1},{ukuran:'M', qty:1}];
+  tempRefImgs = [];
+  const desainerDl = distinctNames('namaDesainer').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  const produksiDl = distinctNames('namaProduksi').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+
+  renderModal(`
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>Project Baru</h2>
+    <div class="modal-sub">Diisi oleh Admin saat pesanan client masuk</div>
+
+    <label>Nama Client</label>
+    <input type="text" id="f_nama" placeholder="cth. Budi Santoso / CV Maju Jaya">
+
+    <div class="row2">
+      <div>
+        <label>No. HP / WA</label>
+        <input type="tel" id="f_hp" placeholder="08xxxxxxxxxx">
+      </div>
+      <div>
+        <label>Via Masuk</label>
+        <select id="f_via">
+          <option>WhatsApp</option>
+          <option>Telepon</option>
+          <option>Datang Langsung</option>
+          <option>Instagram / Sosial Media</option>
+          <option>Lainnya</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Brief Desain</label>
+    <textarea id="f_brief" placeholder="Jelaskan permintaan desain dari client: jenis produk, warna, bahan, konsep, dsb."></textarea>
+
+    <label>List Ukuran & Qty</label>
+    <div id="ukuranWrap"></div>
+    <button type="button" class="btn ghost small" onclick="addUkuranRow()">+ Tambah Ukuran</button>
+
+    <label>Gambar Referensi dari Client</label>
+    <input type="file" id="f_ref" accept="image/*" multiple onchange="handleRefUpload(event)">
+    <div class="filehint">Bisa upload beberapa gambar. Gunakan ukuran file yang wajar agar sinkron antar perangkat tetap cepat.</div>
+    <div class="img-preview-strip" id="refPreview"></div>
+
+    <div class="divider"></div>
+    <div class="section-title" style="margin:0 0 4px;"><h2 style="font-size:18px;">Penugasan & Komisi</h2><div class="line"></div></div>
+
+    <div class="row2">
+      <div>
+        <label>Nama Desainer (Ditugaskan)</label>
+        <input type="text" id="f_desainer" list="dl_desainer" placeholder="Nama desainer yang mengerjakan">
+        <datalist id="dl_desainer">${desainerDl}</datalist>
+      </div>
+      <div>
+        <label>Nama Bagian Produksi (Ditugaskan)</label>
+        <input type="text" id="f_produksi" list="dl_produksi" placeholder="Nama yang memproduksi">
+        <datalist id="dl_produksi">${produksiDl}</datalist>
+      </div>
+    </div>
+    <label>Komisi Produksi per Pcs (Rp)</label>
+    <input type="number" min="0" id="f_komisi" placeholder="cth. 3000">
+    <div class="filehint">Total komisi akan dihitung otomatis: Komisi per Pcs × Total Pcs, dan tampil ke bagian Produksi yang ditugaskan.</div>
+
+    <div class="modal-actions">
+      <button class="btn block" onclick="submitNewProject()">Simpan Project</button>
+    </div>
+  `);
+  renderUkuranRows();
+}
+
+function renderUkuranRows(){
+  const wrap = document.getElementById('ukuranWrap');
+  wrap.innerHTML = tempUkuran.map((row,i)=>`
+    <div class="ukuran-row">
+      <input type="text" value="${escapeHtml(row.ukuran)}" placeholder="Ukuran (S/M/L/XL)" onchange="tempUkuran[${i}].ukuran=this.value">
+      <input type="number" min="0" value="${row.qty}" placeholder="Qty" onchange="tempUkuran[${i}].qty=parseInt(this.value)||0">
+      <button type="button" onclick="removeUkuranRow(${i})" title="Hapus">×</button>
+    </div>
+  `).join('');
+}
+function addUkuranRow(){ tempUkuran.push({ukuran:'', qty:1}); renderUkuranRows(); }
+function removeUkuranRow(i){ tempUkuran.splice(i,1); renderUkuranRows(); }
+
+async function handleRefUpload(e){
+  const files = Array.from(e.target.files);
+  for(const f of files){ tempRefImgs.push(await fileToDataUrl(f)); }
+  renderRefPreview();
+  e.target.value = '';
+}
+function renderRefPreview(){
+  document.getElementById('refPreview').innerHTML = tempRefImgs.map((src,i)=>`
+    <div class="ip"><img src="${src}"><button class="rm" onclick="removeRefImg(${i})">×</button></div>
+  `).join('');
+}
+function removeRefImg(i){ tempRefImgs.splice(i,1); renderRefPreview(); }
+
+async function submitNewProject(){
+  const nama = document.getElementById('f_nama').value.trim();
+  const hp = document.getElementById('f_hp').value.trim();
+  const via = document.getElementById('f_via').value;
+  const brief = document.getElementById('f_brief').value.trim();
+  const namaDesainer = document.getElementById('f_desainer').value.trim();
+  const namaProduksi = document.getElementById('f_produksi').value.trim();
+  const komisiPerPcs = parseFloat(document.getElementById('f_komisi').value) || 0;
+
+  if(!nama || !hp || !brief){
+    alert('Mohon lengkapi Nama Client, No. HP, dan Brief Desain.');
+    return;
+  }
+  const ukuranClean = tempUkuran.filter(u=>u.ukuran.trim()!=='');
+
+  const project = {
+    id: genId(),
+    namaKlien: nama, noHp: hp, via: via, briefDesain: brief,
+    ukuran: ukuranClean, referensi: tempRefImgs,
+    namaDesainer, namaProduksi, komisiPerPcs,
+    status: 'baru', createdAt: Date.now(),
+    desainMulai:null, pedomanDesain:'', pedomanGambar:[], listDesain:'', deadline:'',
+    produksiMulai:null, selesaiAt:null
+  };
+  const ok = await saveProject(project);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+
+/* ===================== MODAL: DETAIL ===================== */
+let tempPedomanImgs = [];
+
+function openDetailModal(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+
+  const ukuranHtml = (p.ukuran||[]).map(u=>`<span class="mono" style="display:inline-block;background:var(--canvas-2);border:1px solid var(--line);border-radius:6px;padding:3px 9px;margin:0 6px 6px 0;font-size:12.5px;">${escapeHtml(u.ukuran)} × ${u.qty}</span>`).join('') || '<span style="color:var(--ink-soft);">Belum diisi</span>';
+  const refHtml = (p.referensi||[]).map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:7px;border:1px solid var(--line);margin:0 6px 6px 0;">`).join('') || '<span style="color:var(--ink-soft);">Tidak ada gambar</span>';
+
+  let body = `
+    <div class="kv"><b>No. HP</b><span>${p.noHp}</span></div>
+    <div class="kv"><b>Via</b><span>${escapeHtml(p.via)}</span></div>
+    <div class="kv"><b>Masuk</b><span>${fmtDate(p.createdAt)}</span></div>
+    <div class="kv"><b>Desainer</b><span>${escapeHtml(p.namaDesainer||'-')}</span></div>
+    <div class="kv"><b>Produksi</b><span>${escapeHtml(p.namaProduksi||'-')}</span></div>
+    <div class="kv"><b>Brief</b><span>${escapeHtml(p.briefDesain)}</span></div>
+    <div class="kv"><b>List Ukuran</b><div>${ukuranHtml}</div></div>
+    <div class="kv"><b>Referensi</b><div>${refHtml}</div></div>
+  `;
+
+  // desainer section
+  if(p.status === 'baru'){
+    body += `<div class="note-box">Project ini belum mulai dikerjakan Desainer.</div>`;
+    if(state.role==='desainer' && sameName(p.namaDesainer)){
+      body += `<div class="modal-actions"><button class="btn block" onclick="startDesain('${p.id}')">Mulai Desain</button></div>`;
+    }
+  } else {
+    const pedomanImgsHtml = (p.pedomanGambar||[]).map(src=>`<img src="${src}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:0 6px 6px 0;">`).join('');
+    body += `
+      <div class="divider"></div>
+      <h2 style="font-size:19px;">Pedoman Desain</h2>
+      <div class="kv"><b>Mulai Desain</b><span>${fmtDate(p.desainMulai)}</span></div>
+      <div class="kv"><b>Pedoman</b><span>${p.pedomanDesain ? escapeHtml(p.pedomanDesain) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
+      <div class="kv"><b>List Desain</b><span>${p.listDesain ? escapeHtml(p.listDesain) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
+      <div class="kv"><b>Deadline</b><span>${p.deadline ? fmtDate(p.deadline) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
+      ${pedomanImgsHtml ? `<div class="kv"><b>Gambar Pedoman</b><div>${pedomanImgsHtml}</div></div>` : ''}
+    `;
+    if(state.role==='desainer' && p.status==='diproses_desainer' && sameName(p.namaDesainer)){
+      tempPedomanImgs = [...(p.pedomanGambar||[])];
+      body += `
+        <div class="divider"></div>
+        <h2 style="font-size:19px;">Isi Pedoman Desain</h2>
+        <label>Pedoman Desain</label>
+        <textarea id="f_pedoman" placeholder="Arahan desain: font, warna, layout, teknik sablon/bordir, dsb.">${escapeHtml(p.pedomanDesain||'')}</textarea>
+        <label>List Desain</label>
+        <textarea id="f_listdesain" placeholder="cth: Desain Depan, Desain Belakang, Logo Lengan">${escapeHtml(p.listDesain||'')}</textarea>
+        <label>Deadline</label>
+        <input type="date" id="f_deadline" value="${p.deadline||''}">
+        <label>Upload Gambar Pedoman (opsional)</label>
+        <input type="file" id="f_pedomanimg" accept="image/*" multiple onchange="handlePedomanUpload(event)">
+        <div class="img-preview-strip" id="pedomanPreview"></div>
+        <div class="modal-actions">
+          <button class="btn ghost" onclick="saveDesainerDraft('${p.id}')">Simpan Draft</button>
+          <button class="btn green" onclick="finishDesain('${p.id}')">Tandai Desain Selesai</button>
+        </div>
+      `;
+    }
+  }
+
+  // komisi box (visible once komisi set)
+  if(p.komisiPerPcs){
+    body += `
+      <div class="komisi-box">
+        <div class="lbl">Total Pcs ${totalQty(p)} × ${rupiah(p.komisiPerPcs)}/pcs</div>
+        <div class="big">${rupiah(totalKomisi(p))}</div>
+      </div>
+    `;
+  }
+
+  // produksi actions
+  if(state.role==='produksi' && sameName(p.namaProduksi)){
+    if(p.status==='desain_selesai'){
+      body += `<div class="modal-actions"><button class="btn rust block" onclick="startProduksi('${p.id}')">Mulai Produksi</button></div>`;
+    } else if(p.status==='diproses_produksi'){
+      body += `<div class="modal-actions"><button class="btn green block" onclick="finishProduksi('${p.id}')">Tandai Produksi Selesai</button></div>`;
+    }
+  }
+
+  // admin manual override
+  if(state.role==='admin'){
+    body += `
+      <div class="divider"></div>
+      <label>Ubah Status Manual (Admin)</label>
+      <div style="display:flex;gap:8px;">
+        <select id="f_manualstatus" style="flex:1;">
+          ${Object.keys(STATUS_LABEL).map(k=>`<option value="${k}" ${p.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
+        </select>
+        <button class="btn ghost" onclick="manualSetStatus('${p.id}')">Terapkan</button>
+      </div>
+    `;
+  }
+
+  renderModal(`
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>${escapeHtml(p.namaKlien)}</h2>
+    <div class="modal-sub mono">${p.id} · <span class="badge ${p.status}" style="transform:none;">${STATUS_LABEL[p.status]}</span></div>
+    ${body}
+  `);
+
+  if(state.role==='desainer' && p.status==='diproses_desainer'){ renderPedomanPreview(); }
+}
+
+function sameName(field){
+  return (field||'').trim().toLowerCase() === (state.myName||'').trim().toLowerCase();
+}
+
+async function handlePedomanUpload(e){
+  const files = Array.from(e.target.files);
+  for(const f of files){ tempPedomanImgs.push(await fileToDataUrl(f)); }
+  renderPedomanPreview();
+  e.target.value = '';
+}
+function renderPedomanPreview(){
+  const el = document.getElementById('pedomanPreview');
+  if(!el) return;
+  el.innerHTML = tempPedomanImgs.map((src,i)=>`
+    <div class="ip"><img src="${src}"><button class="rm" onclick="removePedomanImg(${i})">×</button></div>
+  `).join('');
+}
+function removePedomanImg(i){ tempPedomanImgs.splice(i,1); renderPedomanPreview(); }
+
+async function startDesain(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  p.status = 'diproses_desainer';
+  p.desainMulai = Date.now();
+  const ok = await saveProject(p);
+  if(!ok) return;
+  await refresh(false);
+  openDetailModal(id);
+  render();
+}
+
+async function saveDesainerDraft(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  p.pedomanDesain = document.getElementById('f_pedoman').value.trim();
+  p.listDesain = document.getElementById('f_listdesain').value.trim();
+  p.deadline = document.getElementById('f_deadline').value;
+  p.pedomanGambar = [...tempPedomanImgs];
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+
+async function finishDesain(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  const pedoman = document.getElementById('f_pedoman').value.trim();
+  const deadline = document.getElementById('f_deadline').value;
+  if(!pedoman || !deadline){
+    alert('Isi minimal Pedoman Desain dan Deadline sebelum menandai selesai.');
+    return;
+  }
+  p.pedomanDesain = pedoman;
+  p.listDesain = document.getElementById('f_listdesain').value.trim();
+  p.deadline = deadline;
+  p.pedomanGambar = [...tempPedomanImgs];
+  p.status = 'desain_selesai';
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+
+async function startProduksi(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  p.status = 'diproses_produksi';
+  p.produksiMulai = Date.now();
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+async function finishProduksi(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  p.status = 'selesai';
+  p.selesaiAt = Date.now();
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+async function manualSetStatus(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  p.status = document.getElementById('f_manualstatus').value;
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+}
+
+/* ===================== MODAL SHELL ===================== */
+function renderModal(innerHtml){
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">${innerHtml}</div>
+    </div>
+  `;
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+/* ===================== INIT ===================== */
+(function init(){
+  if(!CONFIG_READY){ state.loading = false; render(); return; }
+  render(); // tampilkan loading dulu
+  subscribeRealtime(); // begitu snapshot pertama datang, render() dipanggil ulang otomatis
+})();
+</script>
+</body>
+</html>

@@ -169,10 +169,22 @@
   .ukuran-row{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;margin-bottom:8px;align-items:center;}
   .ukuran-row button{background:none;border:none;color:var(--rust);cursor:pointer;font-size:18px;}
   .filehint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
-  .img-preview-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .img-preview-strip{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
   .img-preview-strip .ip{position:relative;}
-  .img-preview-strip img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);}
-  .img-preview-strip .rm{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rust);color:white;border:none;font-size:11px;cursor:pointer;line-height:1;}
+  .img-preview-strip img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer;}
+  .img-preview-strip .rm{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--rust);color:white;border:2px solid var(--canvas);font-size:13px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;}
+  .upload-status{font-size:12px;color:var(--denim);margin-top:6px;min-height:16px;}
+
+  .lightbox-overlay{
+    position:fixed;inset:0;background:rgba(15,13,11,0.92);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .lightbox-overlay img{max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
+  .lightbox-close{
+    position:fixed;top:16px;right:16px;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,0.14);color:white;border:none;font-size:24px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;z-index:101;
+  }
 
   .overlay{position:fixed;inset:0;background:rgba(33,29,26,0.55);display:flex;align-items:flex-start;justify-content:center;padding:36px 16px;overflow-y:auto;z-index:50;}
   .modal{background:var(--canvas);border-radius:14px;max-width:660px;width:100%;padding:26px 26px 24px;position:relative;border:1px solid var(--line);}
@@ -202,8 +214,30 @@
   @media(max-width:640px){
     .row2,.row3{grid-template-columns:1fr;}
     header.top{padding:14px 16px;}
+    header.top h1{font-size:23px;}
     main{padding:18px 12px 90px;}
-    .kv{grid-template-columns:120px 1fr;}
+    .kv{grid-template-columns:1fr;gap:2px 10px;}
+    .kv b{margin-top:6px;}
+    .grid{grid-template-columns:1fr;}
+    .modal{padding:20px 16px 20px;border-radius:12px 12px 0 0;}
+    .overlay{padding:0;align-items:flex-end;}
+    .modal{max-height:92vh;overflow-y:auto;}
+    .thumbs img{width:40px;height:40px;}
+    .img-preview-strip img{width:74px;height:74px;}
+    .btn{padding:12px 18px;font-size:15px;}
+    .btn.small{padding:9px 14px;font-size:13px;}
+    .fab{right:16px;bottom:16px;padding:14px 20px;}
+    input[type=text],input[type=tel],input[type=date],input[type=number],textarea,select{
+      font-size:16px; /* mencegah auto-zoom di iOS Safari saat fokus input */
+      padding:12px 12px;
+    }
+    input[type=file]{width:100%;}
+    .role-switch button{padding:9px 14px;font-size:13px;}
+    .subnav button{padding:10px 14px;}
+    .stage-pill{padding:9px 15px;}
+    table.rekap{font-size:12.5px;}
+    table.rekap th,table.rekap td{padding:8px 6px;}
+    .lightbox-close{top:10px;right:10px;}
   }
 </style>
 </head>
@@ -222,33 +256,21 @@
 
 <main id="app"><div class="loading">Memuat data…</div></main>
 <div id="modalRoot"></div>
+<div id="lightboxRoot"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
 <script>
 /* =====================================================================
    KONFIGURASI FIREBASE — ISI DENGAN NILAI DARI FIREBASE CONSOLE ANDA
+   (khusus untuk data project — Firestore. Gambar TIDAK lewat Firebase lagi,
+   lihat KONFIGURASI CLOUDINARY di bawah)
    1) Buka https://console.firebase.google.com → Buat Project (gratis)
    2) Di project itu, buka Build > Firestore Database > Create database
       (mulai dengan mode "test" dulu, nanti rules diganti lihat firestore.rules)
    3) Buka ⚙️ Project Settings > General > scroll ke "Your apps" >
       klik ikon "</>" (Web) untuk daftarkan web app > salin objek firebaseConfig
    4) Tempel nilainya menggantikan placeholder di bawah ini
-   5) Gambar diupload ke Firebase Storage (bukan disimpan sebagai base64 di
-      Firestore lagi). Pastikan juga sudah buka Build > Storage > Get started
-      di Firebase Console, lalu atur Storage Rules (menu Rules di halaman
-      Storage) — untuk mode belajar/testing pakai:
-        rules_version = '2';
-        service firebase.storage {
-          match /b/{bucket}/o {
-            match /{allPaths=**} {
-              allow read, write: if true;
-            }
-          }
-        }
-      (Rules di atas terbuka untuk siapa saja — cukup aman untuk dipakai
-      internal/testing, tapi sebaiknya diperketat lagi kalau app sudah publik.)
    ===================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyDZlsRdjfsrI2JMRAPYdEu94NVye4LeENE",
@@ -260,30 +282,115 @@ const firebaseConfig = {
   measurementId: "G-FF5TNECQKW"
 };
 
+/* =====================================================================
+   KONFIGURASI CLOUDINARY — untuk upload & simpan GAMBAR (gratis, tanpa kartu kredit)
+   1) Daftar gratis di https://cloudinary.com/users/register/free
+   2) Setelah login, di Dashboard akan terlihat "Cloud name" Anda di bagian atas
+      → salin nilainya ke cloudName di bawah ini
+   3) Buat Upload Preset (supaya browser bisa upload langsung tanpa backend/API secret):
+      - Buka Settings (ikon gear) > tab "Upload"
+      - Scroll ke "Upload presets" > klik "Add upload preset"
+      - Ubah "Signing Mode" dari "Signed" menjadi "Unsigned"
+      - (Opsional) beri nama preset yang mudah diingat, misal "tenx_unsigned"
+      - Klik "Save"
+      - Salin nama preset itu ke uploadPreset di bawah ini
+   ===================================================================== */
+const cloudinaryConfig = {
+  cloudName: "ro4ydiuo",
+  uploadPreset: "tenx_unsigned"
+};
+
 const CONFIG_READY = !firebaseConfig.apiKey.startsWith('ISI_');
+const CLOUDINARY_READY = !cloudinaryConfig.cloudName.startsWith('ISI_') && !cloudinaryConfig.uploadPreset.startsWith('ISI_');
 let db = null;
-let storage = null;
 if(CONFIG_READY){
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
-  storage = firebase.storage();
 }
 
-/* ===================== UPLOAD GAMBAR KE FIREBASE STORAGE ===================== */
-// Gambar TIDAK lagi disimpan sebagai base64 di dalam dokumen Firestore (gampang
+/* ===================== UPLOAD GAMBAR KE CLOUDINARY ===================== */
+// Gambar TIDAK disimpan sebagai base64 di dalam dokumen Firestore (gampang
 // kelebihan limit 1MB per field/dokumen). Sebagai gantinya file asli diupload ke
-// Firebase Storage, lalu yang disimpan di Firestore hanya URL-nya (string pendek).
-async function uploadFilesToStorage(files, folder){
-  if(!storage) throw new Error('Firebase Storage belum terkonfigurasi.');
-  const urls = [];
-  for(const f of files){
-    const safeName = f.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-    const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
-    const ref = storage.ref(path);
-    await ref.put(f);
-    urls.push(await ref.getDownloadURL());
+// Cloudinary lewat "unsigned upload" langsung dari browser (tanpa backend/API
+// secret), lalu yang disimpan di Firestore hanya URL-nya (string pendek).
+//
+// Sebelum diupload, gambar dikompres & diresize dulu di browser (max 1600px sisi
+// terpanjang, kualitas ~75%). Ini penting terutama untuk foto dari HP yang biasanya
+// 3-12MB — tanpa kompresi, upload di jaringan mobile bisa sangat lambat / gantung.
+function compressImage(file, maxDim=1600, quality=0.75){
+  return new Promise((resolve)=>{
+    // Kalau bukan gambar (jarang terjadi karena accept="image/*"), lewati kompresi.
+    if(!file.type || !file.type.startsWith('image/')){ resolve(file); return; }
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let {width, height} = img;
+      if(width > maxDim || height > maxDim){
+        if(width >= height){ height = Math.round(height * (maxDim/width)); width = maxDim; }
+        else { width = Math.round(width * (maxDim/height)); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob=>{
+        if(!blob){ resolve(file); return; } // gagal kompres → upload file asli saja
+        const newName = file.name.replace(/\.(heic|heif|png|webp)$/i, '.jpg');
+        resolve(new File([blob], /\.jpg$/i.test(newName) ? newName : newName + '.jpg', {type:'image/jpeg'}));
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); }; // gagal decode → upload asli
+    img.src = objectUrl;
+  });
+}
+
+function withTimeout(promise, ms, message){
+  let timer;
+  const timeout = new Promise((_,reject)=>{ timer = setTimeout(()=>reject(new Error(message)), ms); });
+  return Promise.race([promise, timeout]).finally(()=>clearTimeout(timer));
+}
+
+// Upload beberapa file sekaligus (paralel), masing-masing dikompres dulu, ke Cloudinary.
+// onProgress(doneCount, totalCount) dipanggil tiap ada file yang selesai, untuk update UI.
+async function uploadFilesToStorage(files, folder, onProgress){
+  if(!CLOUDINARY_READY) throw new Error('Cloudinary belum dikonfigurasi. Isi cloudName & uploadPreset di bagian atas kode.');
+  let done = 0;
+  const total = files.length;
+  const uploadOne = async (f) => {
+    const compressed = await compressImage(f);
+    const formData = new FormData();
+    formData.append('file', compressed);
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('folder', folder);
+    const res = await withTimeout(
+      fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData
+      }),
+      45000,
+      'Upload terlalu lama (koneksi lambat, atau Cloudinary belum dikonfigurasi dengan benar — cek console browser untuk detail error).'
+    );
+    if(!res.ok){
+      const errBody = await res.json().catch(()=>null);
+      throw new Error(errBody?.error?.message || `Upload gagal (status ${res.status})`);
+    }
+    const data = await res.json();
+    done++;
+    if(onProgress) onProgress(done, total);
+    return data.secure_url;
+  };
+  // Batasi maksimal 3 upload berjalan bersamaan agar tidak membebani koneksi mobile.
+  const results = new Array(files.length);
+  let cursor = 0;
+  async function worker(){
+    while(cursor < files.length){
+      const idx = cursor++;
+      results[idx] = await uploadOne(files[idx]);
+    }
   }
-  return urls;
+  const workers = Array.from({length: Math.min(3, files.length)}, worker);
+  await Promise.all(workers);
+  return results;
 }
 
 /* ===================== DATA LAYER (Firebase Firestore = realtime lintas device) ===================== */
@@ -630,7 +737,7 @@ function projectCard(p){
       <div class="tag-brief">${escapeHtml(p.briefDesain)}</div>
       ${p.komisiPerPcs ? `<div class="komisi-tag">Komisi: ${rupiah(p.komisiPerPcs)}/pcs → total ${rupiah(totalKomisi(p))}</div>` : ''}
       <div class="tag-foot">
-        <div class="thumbs">${refImgs.map(src=>`<img src="${src}">`).join('')}${(p.referensi||[]).length>4?`<span class="mono" style="font-size:11px;color:var(--ink-soft);align-self:center;">+${p.referensi.length-4}</span>`:''}</div>
+        <div class="thumbs">${refImgs.map(src=>`<img src="${src}" onclick="event.stopPropagation();openLightbox(this.src)">`).join('')}${(p.referensi||[]).length>4?`<span class="mono" style="font-size:11px;color:var(--ink-soft);align-self:center;">+${p.referensi.length-4}</span>`:''}</div>
         ${p.deadline ? `<span class="mono" style="font-size:11.5px;color:var(--rust);">DL ${fmtDate(p.deadline)}</span>` : ''}
       </div>
     </div>
@@ -683,7 +790,8 @@ function openNewProjectModal(){
 
     <label>Gambar Referensi dari Client</label>
     <input type="file" id="f_ref" accept="image/*" multiple onchange="handleRefUpload(event)">
-    <div class="filehint">Bisa upload beberapa gambar. Gunakan ukuran file yang wajar agar sinkron antar perangkat tetap cepat.</div>
+    <div class="filehint">Bisa upload beberapa gambar — otomatis dikompres dulu supaya cepat & hemat kuota.</div>
+    <div class="upload-status mono" id="refUploadStatus"></div>
     <div class="img-preview-strip" id="refPreview"></div>
 
     <div class="divider"></div>
@@ -729,14 +837,18 @@ async function handleRefUpload(e){
   const files = Array.from(e.target.files);
   if(!files.length) return;
   const input = e.target;
+  const statusEl = document.getElementById('refUploadStatus');
   input.disabled = true;
-  const strip = document.getElementById('refPreview');
-  strip.innerHTML += `<div class="ip upload-note mono" style="font-size:11px;color:var(--ink-soft);">Mengupload…</div>`;
+  statusEl.textContent = `Mengupload 0/${files.length}…`;
   try{
-    const urls = await uploadFilesToStorage(files, `referensi/${tempRefUploadId}`);
+    const urls = await uploadFilesToStorage(files, `referensi/${tempRefUploadId}`, (done,total)=>{
+      statusEl.textContent = `Mengupload ${done}/${total}…`;
+    });
     tempRefImgs.push(...urls);
+    statusEl.textContent = '';
   }catch(err){
     console.error('Gagal upload gambar', err);
+    statusEl.textContent = '';
     alert('Gagal upload gambar: ' + err.message);
   }
   input.disabled = false;
@@ -745,7 +857,7 @@ async function handleRefUpload(e){
 }
 function renderRefPreview(){
   document.getElementById('refPreview').innerHTML = tempRefImgs.map((src,i)=>`
-    <div class="ip"><img src="${src}"><button class="rm" onclick="removeRefImg(${i})">×</button></div>
+    <div class="ip"><img src="${src}" onclick="openLightbox(this.src)"><button class="rm" onclick="removeRefImg(${i})">×</button></div>
   `).join('');
 }
 function removeRefImg(i){ tempRefImgs.splice(i,1); renderRefPreview(); }
@@ -788,7 +900,7 @@ function openDetailModal(id){
   if(!p) return;
 
   const ukuranHtml = (p.ukuran||[]).map(u=>`<span class="mono" style="display:inline-block;background:var(--canvas-2);border:1px solid var(--line);border-radius:6px;padding:3px 9px;margin:0 6px 6px 0;font-size:12.5px;">${escapeHtml(u.ukuran)} × ${u.qty}</span>`).join('') || '<span style="color:var(--ink-soft);">Belum diisi</span>';
-  const refHtml = (p.referensi||[]).map(src=>`<img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:7px;border:1px solid var(--line);margin:0 6px 6px 0;">`).join('') || '<span style="color:var(--ink-soft);">Tidak ada gambar</span>';
+  const refHtml = (p.referensi||[]).map(src=>`<img src="${src}" onclick="openLightbox(this.src)" style="width:72px;height:72px;object-fit:cover;border-radius:7px;border:1px solid var(--line);margin:0 6px 6px 0;cursor:pointer;">`).join('') || '<span style="color:var(--ink-soft);">Tidak ada gambar</span>';
 
   let body = `
     <div class="kv"><b>No. HP</b><span>${p.noHp}</span></div>
@@ -808,7 +920,7 @@ function openDetailModal(id){
       body += `<div class="modal-actions"><button class="btn block" onclick="startDesain('${p.id}')">Mulai Desain</button></div>`;
     }
   } else {
-    const pedomanImgsHtml = (p.pedomanGambar||[]).map(src=>`<img src="${src}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:0 6px 6px 0;">`).join('');
+    const pedomanImgsHtml = (p.pedomanGambar||[]).map(src=>`<img src="${src}" onclick="openLightbox(this.src)" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:0 6px 6px 0;cursor:pointer;">`).join('');
     body += `
       <div class="divider"></div>
       <h2 style="font-size:19px;">Pedoman Desain</h2>
@@ -831,6 +943,7 @@ function openDetailModal(id){
         <input type="date" id="f_deadline" value="${p.deadline||''}">
         <label>Upload Gambar Pedoman (opsional)</label>
         <input type="file" id="f_pedomanimg" accept="image/*" multiple onchange="handlePedomanUpload(event, '${p.id}')">
+        <div class="upload-status mono" id="pedomanUploadStatus"></div>
         <div class="img-preview-strip" id="pedomanPreview"></div>
         <div class="modal-actions">
           <button class="btn ghost" onclick="saveDesainerDraft('${p.id}')">Simpan Draft</button>
@@ -891,14 +1004,18 @@ async function handlePedomanUpload(e, projectId){
   const files = Array.from(e.target.files);
   if(!files.length) return;
   const input = e.target;
+  const statusEl = document.getElementById('pedomanUploadStatus');
   input.disabled = true;
-  const strip = document.getElementById('pedomanPreview');
-  if(strip) strip.innerHTML += `<div class="ip upload-note mono" style="font-size:11px;color:var(--ink-soft);">Mengupload…</div>`;
+  if(statusEl) statusEl.textContent = `Mengupload 0/${files.length}…`;
   try{
-    const urls = await uploadFilesToStorage(files, `pedoman/${projectId}`);
+    const urls = await uploadFilesToStorage(files, `pedoman/${projectId}`, (done,total)=>{
+      if(statusEl) statusEl.textContent = `Mengupload ${done}/${total}…`;
+    });
     tempPedomanImgs.push(...urls);
+    if(statusEl) statusEl.textContent = '';
   }catch(err){
     console.error('Gagal upload gambar', err);
+    if(statusEl) statusEl.textContent = '';
     alert('Gagal upload gambar: ' + err.message);
   }
   input.disabled = false;
@@ -909,7 +1026,7 @@ function renderPedomanPreview(){
   const el = document.getElementById('pedomanPreview');
   if(!el) return;
   el.innerHTML = tempPedomanImgs.map((src,i)=>`
-    <div class="ip"><img src="${src}"><button class="rm" onclick="removePedomanImg(${i})">×</button></div>
+    <div class="ip"><img src="${src}" onclick="openLightbox(this.src)"><button class="rm" onclick="removePedomanImg(${i})">×</button></div>
   `).join('');
 }
 function removePedomanImg(i){ tempPedomanImgs.splice(i,1); renderPedomanPreview(); }
@@ -998,6 +1115,17 @@ function renderModal(innerHtml){
   `;
 }
 function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+/* ===================== LIGHTBOX (lihat gambar full-size sekali klik) ===================== */
+function openLightbox(src){
+  document.getElementById('lightboxRoot').innerHTML = `
+    <div class="lightbox-overlay" onclick="closeLightbox()">
+      <button class="lightbox-close" onclick="closeLightbox()">×</button>
+      <img src="${src}" onclick="event.stopPropagation()">
+    </div>
+  `;
+}
+function closeLightbox(){ document.getElementById('lightboxRoot').innerHTML = ''; }
 
 /* ===================== INIT ===================== */
 (function init(){

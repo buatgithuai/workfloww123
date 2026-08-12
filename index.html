@@ -188,6 +188,28 @@
   .img-preview-strip .rm{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--rust);color:white;border:2px solid var(--canvas);font-size:13px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;}
   .upload-status{font-size:12px;color:var(--denim);margin-top:6px;min-height:16px;}
 
+  /* ===== Kartu file non-gambar (docx / xlsx / pdf, dsb) ===== */
+  .file-chip-mini{
+    width:64px;height:64px;border-radius:6px;border:1px solid var(--line);background:var(--canvas-2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    text-decoration:none;color:var(--ink);cursor:pointer;padding:4px;text-align:center;overflow:hidden;
+  }
+  .file-chip-mini .fc-icon{font-size:20px;line-height:1;}
+  .file-chip-mini .fc-name{font-size:8.5px;line-height:1.15;color:var(--ink-soft);word-break:break-all;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .file-chip{
+    display:inline-flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);
+    border-radius:8px;padding:8px 12px;margin:0 6px 6px 0;text-decoration:none;color:var(--ink);
+    font-size:12.5px;cursor:pointer;
+  }
+  .file-chip:hover{border-color:var(--denim);}
+  .file-chip .fc-icon{font-size:18px;}
+  .file-chip .fc-name{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-chip .fc-dl{font-size:10.5px;color:var(--denim);text-transform:uppercase;letter-spacing:.04em;margin-left:2px;}
+  .thumbs .file-chip-mini{width:34px;height:34px;border-radius:5px;}
+  .thumbs .file-chip-mini .fc-icon{font-size:14px;}
+  .thumbs .file-chip-mini .fc-name{display:none;}
+
   .lightbox-overlay{
     position:fixed;inset:0;background:rgba(15,13,11,0.92);z-index:100;
     display:flex;align-items:center;justify-content:center;padding:24px;
@@ -359,16 +381,23 @@ function compressImage(file, maxDim=1600, quality=0.75){
 
 // Upload satu file ke Cloudinary pakai XMLHttpRequest (bukan fetch) supaya bisa
 // melacak progress upload byte-per-byte secara real-time lewat xhr.upload.onprogress.
+// Gambar diupload lewat endpoint "image", sedangkan dokumen (docx/xlsx/pdf/dll) lewat
+// endpoint "raw" — Cloudinary butuh endpoint yang beda untuk file non-gambar.
+// Hasilnya berupa objek {url, name, kind} supaya nama file asli tetap tersimpan.
 function uploadOneFile(file, folder, onBytesProgress){
   return new Promise((resolve, reject)=>{
+    const kind = isImageFile(file) ? 'image' : 'file';
+    const resourceType = kind === 'image' ? 'image' : 'raw';
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', cloudinaryConfig.uploadPreset);
     formData.append('folder', folder);
+    formData.append('use_filename', 'true');
+    formData.append('unique_filename', 'true');
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`);
-    xhr.timeout = 45000;
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/${resourceType}/upload`);
+    xhr.timeout = 60000;
 
     xhr.upload.onprogress = (e) => {
       if(e.lengthComputable && onBytesProgress) onBytesProgress(e.loaded, e.total);
@@ -377,7 +406,7 @@ function uploadOneFile(file, folder, onBytesProgress){
       let data = null;
       try{ data = JSON.parse(xhr.responseText); }catch(e){ /* respons bukan JSON */ }
       if(xhr.status >= 200 && xhr.status < 300 && data && data.secure_url){
-        resolve(data.secure_url);
+        resolve({url:data.secure_url, name:file.name, kind});
       } else {
         const msg = data?.error?.message || `Upload gagal (status ${xhr.status}). Cek nama Cloud Name / Upload Preset sudah benar dan bermode Unsigned.`;
         reject(new Error(msg));
@@ -525,6 +554,54 @@ function distinctNames(field){
   const set = new Set();
   projectsCache.forEach(p=>{ if(p[field]) set.add(p[field]); });
   return Array.from(set);
+}
+
+/* ===================== FILE HELPERS (gambar + docx/xlsx/pdf, dsb) =====================
+   Setiap file yang diupload disimpan sebagai objek {url, name, kind}, bukan cuma URL string,
+   supaya nama file asli & jenisnya (gambar / dokumen) tetap diketahui saat ditampilkan lagi.
+   normalizeFileItem() menjaga kompatibilitas dengan data lama yang formatnya masih string URL. */
+const IMAGE_EXT = ['jpg','jpeg','png','gif','webp','bmp','heic','heif'];
+function getFileExt(name){
+  const m = /\.([a-zA-Z0-9]+)$/.exec(name||'');
+  return m ? m[1].toLowerCase() : '';
+}
+function isImageFile(file){
+  return !!(file && file.type && file.type.startsWith('image/'));
+}
+function normalizeFileItem(item){
+  if(typeof item === 'string'){
+    // data lama sebelum fitur multi-file: cuma URL, dianggap gambar
+    return {url:item, name:item.split('/').pop().split('?')[0], kind:'image'};
+  }
+  return item;
+}
+function fileIcon(ext){
+  if(ext==='pdf') return '📕';
+  if(ext==='doc'||ext==='docx') return '📘';
+  if(ext==='xls'||ext==='xlsx'||ext==='csv') return '📗';
+  return '📄';
+}
+// Kartu preview kecil (di form upload, dengan tombol hapus dibungkus terpisah)
+function fileMiniHtml(rawItem){
+  const it = normalizeFileItem(rawItem);
+  const ext = getFileExt(it.name);
+  if(it.kind==='image' || (!it.kind && IMAGE_EXT.includes(ext))){
+    return `<img src="${it.url}" onclick="openLightbox(this.src)">`;
+  }
+  return `<a class="file-chip-mini" href="${it.url}" target="_blank" rel="noopener" title="${escapeHtml(it.name)}" onclick="event.stopPropagation()">
+    <span class="fc-icon">${fileIcon(ext)}</span><span class="fc-name">${escapeHtml(it.name)}</span>
+  </a>`;
+}
+// Kartu file untuk ditampilkan di detail project (dengan nama & label "unduh")
+function fileCardHtml(rawItem){
+  const it = normalizeFileItem(rawItem);
+  const ext = getFileExt(it.name);
+  if(it.kind==='image' || (!it.kind && IMAGE_EXT.includes(ext))){
+    return `<img src="${it.url}" onclick="openLightbox(this.src)" style="width:72px;height:72px;object-fit:cover;border-radius:7px;border:1px solid var(--line);margin:0 6px 6px 0;cursor:pointer;">`;
+  }
+  return `<a class="file-chip" href="${it.url}" target="_blank" rel="noopener" title="${escapeHtml(it.name)}">
+    <span class="fc-icon">${fileIcon(ext)}</span><span class="fc-name">${escapeHtml(it.name)}</span><span class="fc-dl">⬇ Unduh</span>
+  </a>`;
 }
 
 /* ===================== GROUPING: PER BULAN, DIPISAH PER TAHUN ===================== */
@@ -818,7 +895,7 @@ function projectCard(p){
       <div class="tag-brief">${escapeHtml(p.briefDesain)}</div>
       ${p.komisiPerPcs ? `<div class="komisi-tag">Komisi: ${rupiah(p.komisiPerPcs)}/pcs → total ${rupiah(totalKomisi(p))}</div>` : ''}
       <div class="tag-foot">
-        <div class="thumbs">${refImgs.map(src=>`<img src="${src}" onclick="event.stopPropagation();openLightbox(this.src)">`).join('')}${(p.referensi||[]).length>4?`<span class="mono" style="font-size:11px;color:var(--ink-soft);align-self:center;">+${p.referensi.length-4}</span>`:''}</div>
+        <div class="thumbs" onclick="event.stopPropagation()">${refImgs.map(fileMiniHtml).join('')}${(p.referensi||[]).length>4?`<span class="mono" style="font-size:11px;color:var(--ink-soft);align-self:center;">+${p.referensi.length-4}</span>`:''}</div>
         ${p.deadline ? `<span class="mono" style="font-size:11.5px;color:var(--rust);">DL ${fmtDate(p.deadline)}</span>` : ''}
       </div>
     </div>
@@ -869,9 +946,9 @@ function openNewProjectModal(){
     <div id="ukuranWrap"></div>
     <button type="button" class="btn ghost small" onclick="addUkuranRow()">+ Tambah Ukuran</button>
 
-    <label>Gambar Referensi dari Client</label>
-    <input type="file" id="f_ref" accept="image/*" multiple onchange="handleRefUpload(event)">
-    <div class="filehint">Bisa upload beberapa gambar — otomatis dikompres dulu supaya cepat & hemat kuota.</div>
+    <label>File Referensi dari Client (gambar/Word/Excel/PDF)</label>
+    <input type="file" id="f_ref" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv" multiple onchange="handleRefUpload(event)">
+    <div class="filehint">Bisa upload gambar, Word (.doc/.docx), Excel (.xls/.xlsx), atau PDF — bisa lebih dari satu sekaligus. Gambar otomatis dikompres dulu supaya cepat & hemat kuota.</div>
     <div class="upload-status mono" id="refUploadStatus"></div>
     <div class="img-preview-strip" id="refPreview"></div>
 
@@ -937,8 +1014,8 @@ async function handleRefUpload(e){
   input.value = '';
 }
 function renderRefPreview(){
-  document.getElementById('refPreview').innerHTML = tempRefImgs.map((src,i)=>`
-    <div class="ip"><img src="${src}" onclick="openLightbox(this.src)"><button class="rm" onclick="removeRefImg(${i})">×</button></div>
+  document.getElementById('refPreview').innerHTML = tempRefImgs.map((item,i)=>`
+    <div class="ip">${fileMiniHtml(item)}<button class="rm" onclick="removeRefImg(${i})">×</button></div>
   `).join('');
 }
 function removeRefImg(i){ tempRefImgs.splice(i,1); renderRefPreview(); }
@@ -981,7 +1058,7 @@ function openDetailModal(id){
   if(!p) return;
 
   const ukuranHtml = (p.ukuran||[]).map(u=>`<span class="mono" style="display:inline-block;background:var(--canvas-2);border:1px solid var(--line);border-radius:6px;padding:3px 9px;margin:0 6px 6px 0;font-size:12.5px;">${escapeHtml(u.ukuran)} × ${u.qty}</span>`).join('') || '<span style="color:var(--ink-soft);">Belum diisi</span>';
-  const refHtml = (p.referensi||[]).map(src=>`<img src="${src}" onclick="openLightbox(this.src)" style="width:72px;height:72px;object-fit:cover;border-radius:7px;border:1px solid var(--line);margin:0 6px 6px 0;cursor:pointer;">`).join('') || '<span style="color:var(--ink-soft);">Tidak ada gambar</span>';
+  const refHtml = (p.referensi||[]).map(fileCardHtml).join('') || '<span style="color:var(--ink-soft);">Tidak ada file</span>';
 
   let body = `
     <div class="kv"><b>No. HP</b><span>${p.noHp}</span></div>
@@ -1001,7 +1078,7 @@ function openDetailModal(id){
       body += `<div class="modal-actions"><button class="btn block" onclick="startDesain('${p.id}')">Mulai Desain</button></div>`;
     }
   } else {
-    const pedomanImgsHtml = (p.pedomanGambar||[]).map(src=>`<img src="${src}" onclick="openLightbox(this.src)" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:0 6px 6px 0;cursor:pointer;">`).join('');
+    const pedomanImgsHtml = (p.pedomanGambar||[]).map(fileCardHtml).join('');
     body += `
       <div class="divider"></div>
       <h2 style="font-size:19px;">Pedoman Desain</h2>
@@ -1009,7 +1086,7 @@ function openDetailModal(id){
       <div class="kv"><b>Pedoman</b><span>${p.pedomanDesain ? escapeHtml(p.pedomanDesain) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
       <div class="kv"><b>List Desain</b><span>${p.listDesain ? escapeHtml(p.listDesain) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
       <div class="kv"><b>Deadline</b><span>${p.deadline ? fmtDate(p.deadline) : '<i style="color:var(--ink-soft);">Belum diisi</i>'}</span></div>
-      ${pedomanImgsHtml ? `<div class="kv"><b>Gambar Pedoman</b><div>${pedomanImgsHtml}</div></div>` : ''}
+      ${pedomanImgsHtml ? `<div class="kv"><b>File Pedoman</b><div>${pedomanImgsHtml}</div></div>` : ''}
     `;
     if(state.role==='desainer' && p.status==='diproses_desainer' && sameName(p.namaDesainer)){
       tempPedomanImgs = [...(p.pedomanGambar||[])];
@@ -1022,8 +1099,8 @@ function openDetailModal(id){
         <textarea id="f_listdesain" placeholder="cth: Desain Depan, Desain Belakang, Logo Lengan">${escapeHtml(p.listDesain||'')}</textarea>
         <label>Deadline</label>
         <input type="date" id="f_deadline" value="${p.deadline||''}">
-        <label>Upload Gambar Pedoman (opsional)</label>
-        <input type="file" id="f_pedomanimg" accept="image/*" multiple onchange="handlePedomanUpload(event, '${p.id}')">
+        <label>Upload File Pedoman — gambar/Word/Excel/PDF (opsional)</label>
+        <input type="file" id="f_pedomanimg" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv" multiple onchange="handlePedomanUpload(event, '${p.id}')">
         <div class="upload-status mono" id="pedomanUploadStatus"></div>
         <div class="img-preview-strip" id="pedomanPreview"></div>
         <div class="modal-actions">
@@ -1113,8 +1190,8 @@ async function handlePedomanUpload(e, projectId){
 function renderPedomanPreview(){
   const el = document.getElementById('pedomanPreview');
   if(!el) return;
-  el.innerHTML = tempPedomanImgs.map((src,i)=>`
-    <div class="ip"><img src="${src}" onclick="openLightbox(this.src)"><button class="rm" onclick="removePedomanImg(${i})">×</button></div>
+  el.innerHTML = tempPedomanImgs.map((item,i)=>`
+    <div class="ip">${fileMiniHtml(item)}<button class="rm" onclick="removePedomanImg(${i})">×</button></div>
   `).join('');
 }
 function removePedomanImg(i){ tempPedomanImgs.splice(i,1); renderPedomanPreview(); }
@@ -1251,9 +1328,9 @@ function openEditProjectModal(id){
     <div id="ukuranWrap"></div>
     <button type="button" class="btn ghost small" onclick="addUkuranRow()">+ Tambah Ukuran</button>
 
-    <label>Gambar Referensi dari Client</label>
-    <input type="file" id="f_ref" accept="image/*" multiple onchange="handleRefUpload(event)">
-    <div class="filehint">Upload gambar baru untuk menambah. Klik × pada gambar untuk menghapusnya.</div>
+    <label>File Referensi dari Client (gambar/Word/Excel/PDF)</label>
+    <input type="file" id="f_ref" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv" multiple onchange="handleRefUpload(event)">
+    <div class="filehint">Upload gambar, Word, Excel, atau PDF baru untuk menambah. Klik × pada file untuk menghapusnya.</div>
     <div class="upload-status mono" id="refUploadStatus"></div>
     <div class="img-preview-strip" id="refPreview"></div>
 

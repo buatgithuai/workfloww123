@@ -931,6 +931,133 @@ async function submitNewProject(){
   await refresh();
 }
 
+/* ===================== MODAL: EDIT PROJECT (ADMIN) ===================== */
+function openEditProjectModal(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+
+  tempUkuran = (p.ukuran && p.ukuran.length) ? p.ukuran.map(u=>({...u})) : [{ukuran:'', qty:1}];
+  tempRefImgs = [...(p.referensi||[])];
+  tempRefUploadId = p.id;
+  const desainerDl = distinctNames('namaDesainer').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  const produksiDl = distinctNames('namaProduksi').map(n=>`<option value="${escapeHtml(n)}">`).join('');
+  const viaOptions = ['WhatsApp','Telepon','Datang Langsung','Instagram / Sosial Media','Lainnya'];
+
+  renderModal(`
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>Edit Project</h2>
+    <div class="modal-sub mono">${p.id} · Ubah data pencatatan bila ada kesalahan input</div>
+
+    <label>Nama Client</label>
+    <input type="text" id="f_nama" value="${escapeHtml(p.namaKlien||'')}" placeholder="cth. Budi Santoso / CV Maju Jaya">
+
+    <div class="row2">
+      <div>
+        <label>No. HP / WA</label>
+        <input type="tel" id="f_hp" value="${escapeHtml(p.noHp||'')}" placeholder="08xxxxxxxxxx">
+      </div>
+      <div>
+        <label>Via Masuk</label>
+        <select id="f_via">
+          ${viaOptions.map(v=>`<option ${p.via===v?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <label>Brief Desain</label>
+    <textarea id="f_brief" placeholder="Jelaskan permintaan desain dari client: jenis produk, warna, bahan, konsep, dsb.">${escapeHtml(p.briefDesain||'')}</textarea>
+
+    <label>List Ukuran & Qty</label>
+    <div id="ukuranWrap"></div>
+    <button type="button" class="btn ghost small" onclick="addUkuranRow()">+ Tambah Ukuran</button>
+
+    <label>Gambar / Dokumen Referensi dari Client</label>
+    <input type="file" id="f_ref" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple onchange="handleRefUpload(event)">
+    <div class="filehint">Bisa upload gambar, PDF, Word, atau Excel — beberapa file sekaligus. Gambar otomatis dikompres dulu supaya cepat & hemat kuota.</div>
+    <div class="upload-status mono" id="refUploadStatus"></div>
+    <div class="img-preview-strip" id="refPreview"></div>
+
+    <div class="divider"></div>
+    <div class="section-title" style="margin:0 0 4px;"><h2 style="font-size:18px;">Penugasan & Komisi</h2><div class="line"></div></div>
+
+    <div class="row2">
+      <div>
+        <label>Nama Desainer (Ditugaskan)</label>
+        <input type="text" id="f_desainer" list="dl_desainer" value="${escapeHtml(p.namaDesainer||'')}" placeholder="Nama desainer yang mengerjakan">
+        <datalist id="dl_desainer">${desainerDl}</datalist>
+      </div>
+      <div>
+        <label>Nama Bagian Produksi (Ditugaskan)</label>
+        <input type="text" id="f_produksi" list="dl_produksi" value="${escapeHtml(p.namaProduksi||'')}" placeholder="Nama yang memproduksi">
+        <datalist id="dl_produksi">${produksiDl}</datalist>
+      </div>
+    </div>
+    <label>Komisi Produksi per Pcs (Rp)</label>
+    <input type="number" min="0" id="f_komisi" value="${p.komisiPerPcs||0}" placeholder="cth. 3000">
+    <div class="filehint">Total komisi akan dihitung otomatis: Komisi per Pcs × Total Pcs, dan tampil ke bagian Produksi yang ditugaskan.</div>
+
+    <div class="modal-actions">
+      <button class="btn ghost" style="flex:1;" onclick="openDetailModal('${p.id}')">Batal</button>
+      <button class="btn" style="flex:1;" onclick="submitEditProject('${p.id}')">Simpan Perubahan</button>
+    </div>
+  `);
+  renderUkuranRows();
+  renderRefPreview();
+}
+
+async function submitEditProject(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+
+  const nama = document.getElementById('f_nama').value.trim();
+  const hp = document.getElementById('f_hp').value.trim();
+  const via = document.getElementById('f_via').value;
+  const brief = document.getElementById('f_brief').value.trim();
+  const namaDesainer = document.getElementById('f_desainer').value.trim();
+  const namaProduksi = document.getElementById('f_produksi').value.trim();
+  const komisiPerPcs = parseFloat(document.getElementById('f_komisi').value) || 0;
+
+  if(!nama || !hp || !brief){
+    alert('Mohon lengkapi Nama Client, No. HP, dan Brief Desain.');
+    return;
+  }
+  const ukuranClean = tempUkuran.filter(u=>u.ukuran.trim()!=='');
+
+  p.namaKlien = nama;
+  p.noHp = hp;
+  p.via = via;
+  p.briefDesain = brief;
+  p.ukuran = ukuranClean;
+  p.referensi = tempRefImgs;
+  p.namaDesainer = namaDesainer;
+  p.namaProduksi = namaProduksi;
+  p.komisiPerPcs = komisiPerPcs;
+
+  const ok = await saveProject(p);
+  if(!ok) return;
+  closeModal();
+  await refresh();
+  openDetailModal(id);
+}
+
+/* ===================== HAPUS PROJECT (ADMIN) ===================== */
+async function deleteProject(id){
+  const p = projectsCache.find(x=>x.id===id);
+  if(!p) return;
+  const yakin = confirm(`Yakin ingin menghapus pencatatan project "${p.namaKlien}" (${p.id})?\n\nTindakan ini tidak bisa dibatalkan.`);
+  if(!yakin) return;
+  if(!CONFIG_READY) return;
+  try{
+    await db.collection('projects').doc(id).delete();
+  }catch(e){
+    console.error('Gagal menghapus data', e);
+    alert('Gagal menghapus data: ' + e.message);
+    return;
+  }
+  closeModal();
+  await refresh();
+}
+
 /* ===================== MODAL: DETAIL ===================== */
 let tempPedomanImgs = [];
 
@@ -1021,6 +1148,12 @@ function openDetailModal(id){
           ${Object.keys(STATUS_LABEL).map(k=>`<option value="${k}" ${p.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
         </select>
         <button class="btn ghost" onclick="manualSetStatus('${p.id}')">Terapkan</button>
+      </div>
+      <div class="divider"></div>
+      <label>Kelola Pencatatan (Admin)</label>
+      <div class="modal-actions">
+        <button class="btn ghost" style="flex:1;" onclick="openEditProjectModal('${p.id}')">✎ Edit Data Project</button>
+        <button class="btn rust" style="flex:1;" onclick="deleteProject('${p.id}')">🗑 Hapus Project</button>
       </div>
     `;
   }
